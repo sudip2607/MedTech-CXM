@@ -325,3 +325,15 @@ Commit Message: feat: add python ingestion script and snowflake raw table for or
 Python script successfully uploads at least 1 CSV to S3.
 Snowflake Stage can "see" the file (LIST @stage).
 RAW.OLIST_ORDERS has data in it.
+
+#### Note to remember
+
+I just did a git commit. And it included all the venv files that I don't want to push to github. I had to install boto3 and it created those folders and libraries in my project folder.
+
+Step 1: Create a .gitignore file in your project root.
+Step 2: Remove venv from Git tracking
+git rm -r --cached venv
+git add .
+git commit -m "chore: add .gitignore and remove venv from tracking"
+Step 3: Verify
+git status
