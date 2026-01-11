@@ -2,17 +2,17 @@
 
 ## Day 1 – Foundation & AWS/Snowflake Setup
 
-### A) Today's Outcome
+### A) Today's Outcome Day 1
 
 Established the "Physical & Cloud Infrastructure" skeleton. Will have a local repo, a Snowflake environment, and an AWS S3 bucket ready to receive data.
 
-### B) Prerequisites / Checks
+### B) Prerequisites / Checks Day 1
 
 ✅ AWS Account: Free tier access to the AWS Console (Free Tier is fine). sudip2607
 ✅ Snowflake Account: PJKJJTN-RDC47631.
 ✅ Local Tools: Python 3.10+, Git, and AWS CLI installed (brew install awscli).
 
-### C) Step-by-Step Tasks
+### C) Step-by-Step Tasks Day 1
 
 1️⃣ Local Repo Initialization
 Open bash terminal and run:
@@ -21,11 +21,11 @@ mkdir MedTech-CXM
 cd MedTech-CXM
 git init
 
-### Create the folder structure
+### Create the folder structure Day 1
 
 mkdir -p architecture/diagrams data_dictionary ingestion/olist ingestion/synthetic dbt/cxm_medtech powerbi ci/github_actions scripts/setup
 
-### Create placeholder READMEs
+### Create placeholder READMEs Day 1
 
 touch README.md architecture/README.md data_dictionary/business_definitions.md
 
@@ -80,7 +80,7 @@ Load: S3 -> Snowflake RAW (via External Stage/COPY INTO)
 Transform: dbt (STG -> INT -> MARTS)
 Visualize: Power BI (Import Mode)
 
-### D) Exact Commands to Run After creating files and folders
+### D) Exact Commands to Run After creating files and folders Day 1
 
 git add .
 git commit -m "chore: initial project structure with AWS S3 landing and Snowflake medallion schemas"
@@ -88,13 +88,13 @@ git remote add origin <https://github.com/sudip2607/MedTech-CXM.git>
 git branch -M main
 git push -u origin main
 
-### E) Validation Checks
+### E) Validation Checks Day 1
 
  AWS: Can see the raw/olist/ folder in your S3 bucket
  Snowflake: Can see the CXM_MEDTECH database and all 6 schemas
  GitHub: Folder structure visible online
 
-### F) IAM permissions + AWS CLI config (so Python can upload to S3)
+### F) IAM permissions + AWS CLI config (so Python can upload to S3) Day 1
 
 #### A1) Create IAM policy (least privilege)
 
@@ -157,12 +157,12 @@ aws s3 ls s3://cxm-medtech-landing-ssen27/
 
 Good looks like: commands succeed and list your bucket/prefixes.
 
-### G) Common Failure Modes
+### G) Common Failure Modes Day 1
 
 S3 Region Mismatch: If S3 is in us-east-1 and Snowflake is in eu-central-1, you will pay small egress fees. Try to keep them in the same region.
 Permissions: Ensure your local AWS CLI is configured (aws configure) with a user that has S3FullAccess.
 
-### H) Definition of Done (DoD)
+### H) Definition of Done (DoD) Day 1
 
 Local repo initialized and pushed to GitHub.
 AWS S3 Bucket created with raw/ folders.
@@ -171,17 +171,17 @@ Business definitions (MedTech mapping) documented.
 
 ## Day 2 – The Ingestion Engine (Local to S3 to Snowflake)
 
-### A) Today’s Outcome
+### A) Today’s Outcome Day 2
 
 We will build a "Production-Ready" ingestion pipeline for the first 3 Olist tables. Data will flow from local machine → S3 Landing → Snowflake RAW tables with enterprise metadata (batch IDs and timestamps).
 
-### B) Prerequisites / Checks for Day2
+### B) Prerequisites / Checks for Day 2
 
 ✅ AWS CLI configured and validated (Done).
 ✅ Snowflake RAW schema exists (Done).
 ✅ Olist Dataset: Download the Olist Dataset from Kaggle ([https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce]) and place the CSVs in a local folder (e.g., ~/Downloads/olist_data/).
 
-### C) Step-by-Step Tasks for Day2
+### C) Step-by-Step Tasks for Day 2
 
 1️⃣ Create the Python Ingestion Script
 
@@ -309,12 +309,12 @@ SELECT COUNT(*), _BATCH_ID, _SOURCE_FILENAME FROM RAW.OLIST_ORDERS GROUP BY 2, 3
 -- 2. Check for nulls in critical IDs
 SELECT COUNT(*) FROM RAW.OLIST_ORDERS WHERE ORDER_ID IS NULL;
 
-### E) Common Failure Modes
+### E) Common Failure Modes Day 2
 
 CSV Header Mismatch: If the Olist CSV has 9 columns but your table has 8, COPY INTO will fail. Always check the CSV header first.
 S3 Pathing: Ensure the Python script and the Snowflake Stage URL match exactly.
 
-### F) What I should commit to Git
+### F) What I should commit to Git Day 2
 
 ingestion/olist/ingest_to_s3.py
 scripts/setup/snowflake_raw_setup.sql (Save your Snowflake SQL here)
@@ -672,14 +672,14 @@ sources:
       - name: product_category_name_translation
       - name: olist_geolocation
 
-### D) Exact Commands to Run
+### D) Exact Commands to Run Day 3
 
 Test your dbt connection
 
 cd dbt/cxm_medtech
 dbt debug
 
-### E) Validation Queries
+### E) Validation Queries Day 3
 
 In Snowflake, verify all 6 tables are loaded:
 
@@ -689,12 +689,12 @@ UNION ALL
 SELECT 'customers', count(*) FROM RAW.OLIST_CUSTOMERS
 -- ... repeat for all 6
 
-### F) Common Failure Modes
+### F) Common Failure Modes Day 3
 
 dbt Profiles: If dbt debug fails, it’s usually a profiles.yml issue. dbt usually stores this in ~/.dbt/profiles.yml. Ensure the account field does not include https://. It should just be PJKJJTN-RDC47631.
 Schema Names: Ensure dbt is pointing to CXM_MEDTECH.
 
-### G) What I should commit to Git
+### G) What I should commit to Git Day 3
 
 dbt/cxm_medtech/ (The whole folder created by dbt init)
 dbt/cxm_medtech/models/staging/sources.yml
@@ -1478,4 +1478,178 @@ Commit Message: feat: add Account 360 and HCP 360 intermediate models
 
 dbt run succeeds for the new models.
 Snowflake INT schema contains 4 views total (Shipments, Items, Accounts, HCPs).
-You can see the account_segment and loyalty_status logic working in Snowflake.
+We can see the account_segment and loyalty_status logic working in Snowflake.
+
+## Day 8 – Analytics Marts (Facts, Dimensions, CX Health Score)
+
+### A) Today’s Outcome Day 8
+
+By the end of Day 8 we will have:
+
+- A star-schema–friendly MARTS layer
+- One core fact table for CX analytics
+- Clean dimensions for Account and HCP
+- A rule-based, explainable CX Health Score
+- Ready-for–Power BI Import or DirectQuery tables
+
+### B) Prerequisites / Checks Day 8
+
+✅ INT_SHIPMENTS_ENRICHED
+✅ INT_SHIPMENT_ITEMS_ENRICHED
+✅ INT_ACCOUNTS_360
+✅ INT_HCP_360
+✅ dbt run and dbt test passing
+
+### C) Step-by-Step Tasks Day 8
+
+1️⃣ Create MARTS folder structure
+Create:
+
+dbt_project/models/marts/
+├── core/
+│   ├── fct_shipments.sql
+│   ├── fct_shipment_items.sql
+├── dimensions/
+│   ├── dim_account.sql
+│   ├── dim_hcp.sql
+
+2️⃣ Dimension: Account
+Create models/marts/dimensions/dim_account.sql:
+
+select
+    account_id,
+    city,
+    state,
+    account_segment,
+    total_shipments,
+    unique_devices_ordered,
+    total_lifetime_value,
+    avg_account_nps_score,
+    on_time_delivery_rate
+from {{ ref('int_accounts_360') }}
+
+✅ 1 row per account
+✅ Stable grain
+✅ Perfect Power BI dimension
+
+3️⃣ Dimension: HCP
+Create models/marts/dimensions/dim_hcp.sql:
+
+select
+    hcp_id,
+    city,
+    state,
+    loyalty_status,
+    total_orders,
+    avg_hcp_nps_score,
+    total_detractions,
+    first_order_at,
+    last_order_at
+from {{ ref('int_hcp_360') }}
+
+4️⃣ Fact: Shipments (CX Core Fact)
+Create models/marts/core/fct_shipments.sql:
+
+select
+    shipment_id,
+    hcp_id,
+    shipment_status,
+    ordered_at,
+    delivered_at,
+    estimated_delivery_at,
+    is_on_time,
+    days_to_deliver,
+    survey_score,
+    nps_category
+from {{ ref('int_shipments_enriched') }}
+
+✅ Grain: 1 row per shipment
+✅ Ideal for trend analysis, SLA tracking, NPS analysis
+
+5️⃣ Fact: Shipment Items (Commercial Detail)
+Create models/marts/core/fct_shipment_items.sql:
+
+select
+    shipment_item_key,
+    shipment_id,
+    account_id,
+    device_id,
+    unit_price,
+    freight_amount,
+    total_line_value
+from {{ ref('int_shipment_items_enriched') }}
+
+6️⃣ Add CX Health Score (Explainable)
+Create models/marts/core/fct_account_cx_health.sql:
+
+with base as (
+    select * from {{ ref('dim_account') }}
+),
+
+scored as (
+    select
+        *,
+        /* Score Components (0–100) */
+        round(on_time_delivery_rate * 40, 1) as delivery_score,
+        round(coalesce(avg_account_nps_score, 0) / 5 * 40, 1) as sentiment_score,
+        case 
+            when total_shipments >= 10 then 20
+            when total_shipments >= 3 then 10
+            else 5
+        end as engagement_score
+    from base
+),
+
+final as (
+    select
+        account_id,
+        delivery_score,
+        sentiment_score,
+        engagement_score,
+        delivery_score + sentiment_score + engagement_score as cx_health_score,
+        case
+            when delivery_score + sentiment_score + engagement_score >= 80 then 'Healthy'
+            when delivery_score + sentiment_score + engagement_score >= 60 then 'Watch'
+            else 'At Risk'
+        end as cx_health_status
+    from scored
+)
+
+select * from final
+
+✅ Fully explainable
+✅ Business-friendly
+✅ Interview gold
+
+### D) Exact Commands to Run Day 8
+
+dbt run --select marts
+
+### E) Validation Queries (Snowflake) Day 8
+
+-- Health distribution
+SELECT cx_health_status, COUNT(*) 
+FROM CXM_MEDTECH.MARTS.FCT_ACCOUNT_CX_HEALTH
+GROUP BY 1;
+
+-- Sanity check fact size
+SELECT COUNT(*) FROM CXM_MEDTECH.MARTS.FCT_SHIPMENTS;
+
+### F) Common Failure Modes Day 8
+
+❌ Duplicate shipment_id in facts → indicates fan-out earlier (you’re clean)
+❌ Null scores → expected for accounts with no surveys (acceptable)
+
+### G) What to Commit to Git Day 8
+
+Files
+
+All files in models/marts/
+Commit Message "feat: add marts layer with facts, dimensions, and cx health score"
+
+### H) Definition of Done Day 8
+
+ dbt run --select marts passes
+ MARTS schema contains facts + dimensions
+ CX Health Score visible and categorized
+ dbt docs updated and pushed to S3
