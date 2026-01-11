@@ -700,6 +700,11 @@ dbt/cxm_medtech/ (The whole folder created by dbt init)
 dbt/cxm_medtech/models/staging/sources.yml
 Commit Message: feat: initialize dbt project and define raw sources
 
+Note:
+git add . only adds files in the current directory (cxm_medtech)
+Your changes are in parent directories (../../DayWise_Activity.md, etc.)
+You need to run git add from the project root or use git add -A to add all changes
+
 ### H) Definition of Done (DoD) Day 3
 
 All 6 Olist tables loaded into Snowflake RAW.
