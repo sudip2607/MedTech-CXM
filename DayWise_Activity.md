@@ -705,6 +705,60 @@ git add . only adds files in the current directory (cxm_medtech)
 Your changes are in parent directories (../../DayWise_Activity.md, etc.)
 You need to run git add from the project root or use git add -A to add all changes
 
+you can revert commits, but feature branches are the enterprise standard.
+
+Reverting Commits (Without Feature Branch)
+Option 1: Undo last commit (before pushing)
+Undo commit but keep changes
+git reset --soft HEAD~1
+
+Undo commit and discard changes
+git reset --hard HEAD~1
+
+Option 2: Revert after pushing
+Creates a new commit that undoes changes
+git revert <commit-hash>
+git push
+
+Option 3: Force push (dangerous - avoid in teams)
+git reset --hard HEAD~1
+git push --force
+
+Enterprise Real-World Standard: YES, Always Use Feature Branches
+
+Standard workflow (Git Flow/GitHub Flow):
+
+
+1. Create feature branch
+git checkout -b feature/add-customer-model
+
+2. Make changes and commit
+git add .
+git commit -m "feat: add customer dimension model"
+
+3. Push feature branch
+git push -u origin feature/add-customer-model
+
+4. Create Pull Request (PR) on GitHub
+Team reviews → approve → merge to main
+
+5. Switch back to main and pull latest
+git checkout main
+git pull
+
+Why enterprises use feature branches:
+✅ main stays stable and deployable
+✅ Code review via Pull Requests
+✅ Easy to abandon bad features
+✅ Multiple people can work simultaneously
+✅ CI/CD runs tests before merging
+
+Your workflow should be:
+
+main = production-ready code only
+feature/* = work-in-progress branches
+Merge via Pull Requests with reviews
+
 ### H) Definition of Done (DoD) Day 3
 
 All 6 Olist tables loaded into Snowflake RAW.
