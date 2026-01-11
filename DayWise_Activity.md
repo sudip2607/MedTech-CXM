@@ -1309,3 +1309,173 @@ Commit Message: feat: add intermediate enriched models for shipments and items
 dbt run succeeds for both intermediate models.
 Snowflake INT schema contains the new views.
 You can see the is_on_time and nps_category columns populated in Snowflake.
+
+#### Note
+
+Sequence of commands from cxm_medtech folder after everything is done
+
+dbt run
+dbt test
+dbt docs generate
+dbt docs serve
+
+git add -A
+git commit -m "feat: complete intermediate layer with enriched shipment and item models"
+git push
+
+aws s3 sync ./target/ s3://cxm-medtech-dbt-docs-ssen27/ --delete
+
+after all the above, dbt lineage graph would be visibile from [here](http://cxm-medtech-dbt-docs-ssen27.s3-website-us-east-1.amazonaws.com)
+
+## Day 7 – The "360" Layer: Account & HCP Entities
+
+### A) Today’s Outcome Day 7
+
+We will build the Account 360 and HCP 360 models. In a MedTech CXM, the "Account" (Hospital/Distributor) is the primary commercial entity, and the "HCP" (Surgeon/Clinician) is the primary user.
+
+Today we aggregate shipment history, spend, and sentiment (NPS) at these two grains.
+
+### B) Prerequisites / Checks Day 7
+
+✅ INT_SHIPMENTS_ENRICHED and INT_SHIPMENT_ITEMS_ENRICHED are visible in Snowflake.
+✅ dbt_project.yml is set to view for the intermediate layer.
+
+### C) Step-by-Step Tasks Day 7
+
+1️⃣ Create int_accounts_360.sql
+
+This model aggregates everything we know about a Hospital/Account.
+Create dbt_project/models/intermediate/int_accounts_360.sql:
+
+with shipment_items as (
+    select * from {{ ref('int_shipment_items_enriched') }}
+),
+
+shipments as (
+    select * from {{ ref('int_shipments_enriched') }}
+),
+
+account_base as (
+    select * from {{ ref('stg_olist__accounts') }}
+),
+
+account_metrics as (
+    select
+        i.account_id,
+        count(distinct i.shipment_id) as total_shipments,
+        count(distinct i.device_id) as unique_devices_ordered,
+        sum(i.total_line_value) as total_account_value,
+        avg(s.survey_score) as avg_account_nps_score,
+        sum(s.is_on_time) / count(s.shipment_id) as on_time_delivery_rate
+    from shipment_items i
+    left join shipments s on i.shipment_id = s.shipment_id
+    group by 1
+),
+
+final as (
+    select
+        a.account_id,
+        a.city,
+        a.state,
+        coalesce(m.total_shipments, 0) as total_shipments,
+        coalesce(m.unique_devices_ordered, 0) as unique_devices_ordered,
+        coalesce(m.total_account_value, 0) as total_lifetime_value,
+        m.avg_account_nps_score,
+        m.on_time_delivery_rate,
+        
+        -- Logic: Account Segment
+        case 
+            when m.total_account_value > 10000 then 'Tier 1 (Key Account)'
+            when m.total_account_value > 2000 then 'Tier 2 (Growth)'
+            else 'Tier 3 (Standard)'
+        end as account_segment
+
+    from account_base a
+    left join account_metrics m on a.account_id = m.account_id
+)
+
+select * from final
+
+2️⃣ Create int_hcp_360.sql
+
+This model aggregates behavior at the individual Clinician (HCP) level.
+Create dbt_project/models/intermediate/int_hcp_360.sql:
+
+with hcp_base as (
+    select * from {{ ref('stg_olist__hcp') }}
+),
+
+shipments as (
+    select * from {{ ref('int_shipments_enriched') }}
+),
+
+hcp_metrics as (
+    select
+        hcp_id,
+        count(shipment_id) as total_orders,
+        min(ordered_at) as first_order_at,
+        max(ordered_at) as last_order_at,
+        avg(survey_score) as avg_hcp_nps_score,
+        count(case when nps_category = 'Detractor' then 1 end) as total_detractions
+    from shipments
+    group by 1
+),
+
+final as (
+    select
+        h.hcp_id,
+        h.city,
+        h.state,
+        coalesce(m.total_orders, 0) as total_orders,
+        m.first_order_at,
+        m.last_order_at,
+        m.avg_hcp_nps_score,
+        m.total_detractions,
+        
+        -- Logic: HCP Loyalty Status
+        case 
+            when m.total_orders > 5 then 'Frequent User'
+            when m.total_orders > 1 then 'Repeat User'
+            else 'New/One-time User'
+        end as loyalty_status
+
+    from hcp_base h
+    left join hcp_metrics m on h.hcp_id = m.hcp_id
+)
+
+select * from final
+
+### D) Exact Commands to Run Day 7
+
+dbt run --select models/intermediate
+
+### E) Validation Queries Day 7
+
+In Snowflake, verify your new "360" views:
+
+-- Check Account Segmentation distribution
+SELECT account_segment, count(*), avg(total_lifetime_value) 
+FROM CXM_MEDTECH.INT.INT_ACCOUNTS_360 
+GROUP BY 1;
+
+-- Check HCP Loyalty distribution
+SELECT loyalty_status, count(*) 
+FROM CXM_MEDTECH.INT.INT_HCP_360 
+GROUP BY 1;
+
+### F) Common Failure Modes Day 7
+
+Null Handling: If an Account or HCP has zero orders, the metrics will be NULL. We use coalesce(..., 0) to ensure the dashboard doesn't show empty cells.
+Granularity: Ensure INT_ACCOUNTS_360 has exactly one row per account_id.
+
+### G) What I should commit to Git Day 7
+
+models/intermediate/int_accounts_360.sql
+models/intermediate/int_hcp_360.sql
+Commit Message: feat: add Account 360 and HCP 360 intermediate models
+
+### H) Definition of Done (DoD) Day 7
+
+dbt run succeeds for the new models.
+Snowflake INT schema contains 4 views total (Shipments, Items, Accounts, HCPs).
+You can see the account_segment and loyalty_status logic working in Snowflake.
