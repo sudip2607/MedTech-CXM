@@ -1,0 +1,57 @@
+[0m20:21:10.467690 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10dd17d40>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10dfaec60>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10dfae8d0>]}
+
+
+============================== 20:21:10.470474 | ebf54c3e-51c8-4abc-ac84-795fe2f1b0e6 ==============================
+[0m20:21:10.470474 [info ] [MainThread]: Running with dbt=1.11.2
+[0m20:21:10.470747 [debug] [MainThread]: running dbt with arguments {'quiet': 'False', 'log_format': 'default', 'warn_error': 'None', 'write_json': 'True', 'empty': 'None', 'profiles_dir': '/Users/sudipsen/.dbt', 'debug': 'False', 'target_path': 'None', 'introspect': 'True', 'static_parser': 'True', 'no_print': 'None', 'log_path': 'logs', 'fail_fast': 'False', 'use_experimental_parser': 'False', 'use_colors': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'printer_width': '80', 'cache_selected_only': 'False', 'partial_parse': 'True', 'indirect_selection': 'eager', 'version_check': 'True', 'log_cache_events': 'False', 'send_anonymous_usage_stats': 'True', 'invocation_command': 'dbt init cxm_medtech'}
+[0m20:21:10.479409 [debug] [MainThread]: Starter project path: /Users/sudipsen/Documents/Visual Studio_All Work/MedTech-CXM/venv/lib/python3.12/site-packages/dbt/include/starter_project
+[0m20:21:10.483359 [info ] [MainThread]: 
+Your new dbt project "cxm_medtech" was created!
+
+For more information on how to configure the profiles.yml file,
+please consult the dbt documentation here:
+
+  https://docs.getdbt.com/docs/configure-your-profile
+
+One more thing:
+
+Need help? Don't hesitate to reach out to us via GitHub issues or on Slack:
+
+  https://community.getdbt.com/
+
+Happy modeling!
+
+[0m20:21:10.483647 [info ] [MainThread]: Setting up your profile.
+[0m20:21:35.230997 [debug] [MainThread]: Snowflake adapter: Setting snowflake.connector to ERROR (file logging only)
+[0m20:21:35.231317 [debug] [MainThread]: Snowflake adapter: Setting botocore to ERROR (file logging only)
+[0m20:21:35.231452 [debug] [MainThread]: Snowflake adapter: Setting boto3 to ERROR (file logging only)
+[0m20:26:57.362402 [info ] [MainThread]: Profile cxm_medtech written to /Users/sudipsen/.dbt/profiles.yml using target's profile_template.yml and your supplied values. Run 'dbt debug' to validate the connection.
+[0m20:26:57.371436 [debug] [MainThread]: Resource report: {"command_name": "init", "command_success": true, "command_wall_clock_time": 346.93466, "process_in_blocks": "0", "process_kernel_time": 0.14796, "process_mem_max_rss": "132579328", "process_out_blocks": "0", "process_user_time": 0.648594}
+[0m20:26:57.372121 [debug] [MainThread]: Command `dbt init` succeeded at 20:26:57.372061 after 346.94 seconds
+[0m20:26:57.372381 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10dfae960>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10e3f0f80>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10ec8bf50>]}
+[0m20:26:57.372581 [debug] [MainThread]: Flushing usage events
+[0m20:26:57.505443 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m20:27:14.634332 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x108d42e40>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b8f2c30>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b8f2930>]}
+
+
+============================== 20:27:14.637178 | 561cafb2-0009-4283-a3a9-41a477974689 ==============================
+[0m20:27:14.637178 [info ] [MainThread]: Running with dbt=1.11.2
+[0m20:27:14.637434 [debug] [MainThread]: running dbt with arguments {'target_path': 'None', 'debug': 'False', 'quiet': 'False', 'indirect_selection': 'eager', 'partial_parse': 'True', 'fail_fast': 'False', 'use_experimental_parser': 'False', 'log_format': 'default', 'introspect': 'True', 'write_json': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'send_anonymous_usage_stats': 'True', 'version_check': 'True', 'printer_width': '80', 'static_parser': 'True', 'use_colors': 'True', 'log_path': 'logs', 'empty': 'None', 'cache_selected_only': 'False', 'invocation_command': 'dbt debug', 'profiles_dir': '/Users/sudipsen/.dbt', 'warn_error': 'None', 'log_cache_events': 'False', 'no_print': 'None'}
+[0m20:27:14.644008 [info ] [MainThread]: dbt version: 1.11.2
+[0m20:27:14.644196 [info ] [MainThread]: python version: 3.12.11
+[0m20:27:14.644304 [info ] [MainThread]: python path: /Users/sudipsen/Documents/Visual Studio_All Work/MedTech-CXM/venv/bin/python3.12
+[0m20:27:14.644407 [info ] [MainThread]: os info: macOS-26.2-arm64-arm-64bit
+[0m20:27:14.951230 [debug] [MainThread]: Snowflake adapter: Setting snowflake.connector to ERROR (file logging only)
+[0m20:27:14.951461 [debug] [MainThread]: Snowflake adapter: Setting botocore to ERROR (file logging only)
+[0m20:27:14.951591 [debug] [MainThread]: Snowflake adapter: Setting boto3 to ERROR (file logging only)
+[0m20:27:14.975123 [info ] [MainThread]: Using profiles dir at /Users/sudipsen/.dbt
+[0m20:27:14.975312 [info ] [MainThread]: Using profiles.yml file at /Users/sudipsen/.dbt/profiles.yml
+[0m20:27:14.975421 [info ] [MainThread]: Using dbt_project.yml file at /Users/sudipsen/Documents/Visual Studio_All Work/MedTech-CXM/dbt_project.yml
+[0m20:27:14.975554 [error] [MainThread]: Encountered an error:
+Internal Error
+  Profile should not be None if loading profile completed
+[0m20:27:14.976741 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.37346417, "process_in_blocks": "0", "process_kernel_time": 0.127023, "process_mem_max_rss": "133971968", "process_out_blocks": "0", "process_user_time": 0.669132}
+[0m20:27:14.977052 [debug] [MainThread]: Command `dbt debug` failed at 20:27:14.977009 after 0.37 seconds
+[0m20:27:14.977200 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10bf0b6e0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c485190>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c485ac0>]}
+[0m20:27:14.977353 [debug] [MainThread]: Flushing usage events
+[0m20:27:15.075365 [debug] [MainThread]: An error was encountered while trying to flush usage events

@@ -337,3 +337,377 @@ git add .
 git commit -m "chore: add .gitignore and remove venv from tracking"
 Step 3: Verify
 git status
+
+## Day 3 – Completing the RAW Layer & dbt Initialization
+
+### A) Today’s Outcome Day 3
+
+Ingest the remaining core Olist tables into Snowflake RAW.
+Initialize the dbt project (cxm_medtech).
+Configure the dbt_project.yml and profiles.yml to connect to your Snowflake account.
+
+### B) Prerequisites / Checks Day 3
+
+✅ RAW.OLIST_ORDERS has 99,441 rows.
+✅ Python script ingest_to_s3.py is working.
+✅ dbt-core installed (dbt --version).
+
+### C) Step-by-Step Tasks Day 3
+
+1️⃣ Ingest the remaining tables
+
+Update your ingest_to_s3.py TABLES list to include the rest of the core files:
+
+TABLES = [
+    'olist_orders_dataset.csv',
+    'olist_customers_dataset.csv',
+    'olist_order_items_dataset.csv',
+    'olist_order_reviews_dataset.csv',
+    'olist_products_dataset.csv',
+    'olist_sellers_dataset.csv',
+    'olist_order_payments_dataset.csv',
+    'product_category_name_translation.csv',
+    'olist_geolocation_dataset.csv'
+]
+
+Run the script. Then, in Snowflake, create the tables and run COPY INTO for each.
+
+USE WAREHOUSE WH_CXM;
+USE DATABASE CXM_MEDTECH;
+USE SCHEMA RAW;
+
+-- Confirm file format exists (create if not)
+CREATE FILE FORMAT IF NOT EXISTS csv_format
+  TYPE = 'CSV'
+  FIELD_DELIMITER = ','
+  SKIP_HEADER = 1
+  NULL_IF = ('', 'null')
+  FIELD_OPTIONALLY_ENCLOSED_BY = '"';
+
+-- Confirm stage exists (adjust if your stage name differs)
+-- If you already created it, this is safe to re-run.
+CREATE STAGE IF NOT EXISTS olist_s3_stage
+  URL = 's3://cxm-medtech-landing-ssen27/raw/olist/'
+  FILE_FORMAT = csv_format;
+
+-- Confirm Snowflake can see files (these should return rows)
+LIST @olist_s3_stage;
+LIST @olist_s3_stage/olist_orders_dataset;
+
+USE WAREHOUSE WH_CXM;
+USE DATABASE CXM_MEDTECH;
+USE SCHEMA RAW;
+
+-- ORDERS (you already have this; keep as-is or replace with this definition)
+CREATE OR REPLACE TABLE RAW.OLIST_ORDERS (
+  ORDER_ID VARCHAR,
+  CUSTOMER_ID VARCHAR,
+  ORDER_STATUS VARCHAR,
+  ORDER_PURCHASE_TIMESTAMP VARCHAR,
+  ORDER_APPROVED_AT VARCHAR,
+  ORDER_DELIVERED_CARRIER_DATE VARCHAR,
+  ORDER_DELIVERED_CUSTOMER_DATE VARCHAR,
+  ORDER_ESTIMATED_DELIVERY_DATE VARCHAR,
+  _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  _BATCH_ID VARCHAR,
+  _SOURCE_FILENAME VARCHAR
+);
+
+CREATE OR REPLACE TABLE RAW.OLIST_CUSTOMERS (
+  CUSTOMER_ID VARCHAR,
+  CUSTOMER_UNIQUE_ID VARCHAR,
+  CUSTOMER_ZIP_CODE_PREFIX VARCHAR,
+  CUSTOMER_CITY VARCHAR,
+  CUSTOMER_STATE VARCHAR,
+  _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  _BATCH_ID VARCHAR,
+  _SOURCE_FILENAME VARCHAR
+);
+
+CREATE OR REPLACE TABLE RAW.OLIST_ORDER_ITEMS (
+  ORDER_ID VARCHAR,
+  ORDER_ITEM_ID VARCHAR,
+  PRODUCT_ID VARCHAR,
+  SELLER_ID VARCHAR,
+  SHIPPING_LIMIT_DATE VARCHAR,
+  PRICE VARCHAR,
+  FREIGHT_VALUE VARCHAR,
+  _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  _BATCH_ID VARCHAR,
+  _SOURCE_FILENAME VARCHAR
+);
+
+CREATE OR REPLACE TABLE RAW.OLIST_ORDER_REVIEWS (
+  REVIEW_ID VARCHAR,
+  ORDER_ID VARCHAR,
+  REVIEW_SCORE VARCHAR,
+  REVIEW_COMMENT_TITLE VARCHAR,
+  REVIEW_COMMENT_MESSAGE VARCHAR,
+  REVIEW_CREATION_DATE VARCHAR,
+  REVIEW_ANSWER_TIMESTAMP VARCHAR,
+  _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  _BATCH_ID VARCHAR,
+  _SOURCE_FILENAME VARCHAR
+);
+
+CREATE OR REPLACE TABLE RAW.OLIST_PRODUCTS (
+  PRODUCT_ID VARCHAR,
+  PRODUCT_CATEGORY_NAME VARCHAR,
+  PRODUCT_NAME_LENGHT VARCHAR,
+  PRODUCT_DESCRIPTION_LENGHT VARCHAR,
+  PRODUCT_PHOTOS_QTY VARCHAR,
+  PRODUCT_WEIGHT_G VARCHAR,
+  PRODUCT_LENGTH_CM VARCHAR,
+  PRODUCT_HEIGHT_CM VARCHAR,
+  PRODUCT_WIDTH_CM VARCHAR,
+  _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  _BATCH_ID VARCHAR,
+  _SOURCE_FILENAME VARCHAR
+);
+
+CREATE OR REPLACE TABLE RAW.OLIST_SELLERS (
+  SELLER_ID VARCHAR,
+  SELLER_ZIP_CODE_PREFIX VARCHAR,
+  SELLER_CITY VARCHAR,
+  SELLER_STATE VARCHAR,
+  _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  _BATCH_ID VARCHAR,
+  _SOURCE_FILENAME VARCHAR
+);
+
+CREATE OR REPLACE TABLE RAW.OLIST_ORDER_PAYMENTS (
+  ORDER_ID VARCHAR,
+  PAYMENT_SEQUENTIAL VARCHAR,
+  PAYMENT_TYPE VARCHAR,
+  PAYMENT_INSTALLMENTS VARCHAR,
+  PAYMENT_VALUE VARCHAR,
+  _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  _BATCH_ID VARCHAR,
+  _SOURCE_FILENAME VARCHAR
+);
+
+CREATE OR REPLACE TABLE RAW.PRODUCT_CATEGORY_NAME_TRANSLATION (
+  PRODUCT_CATEGORY_NAME VARCHAR,
+  PRODUCT_CATEGORY_NAME_ENGLISH VARCHAR,
+  _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  _BATCH_ID VARCHAR,
+  _SOURCE_FILENAME VARCHAR
+);
+
+CREATE OR REPLACE TABLE RAW.OLIST_GEOLOCATION (
+  GEOLOCATION_ZIP_CODE_PREFIX VARCHAR,
+  GEOLOCATION_LAT VARCHAR,
+  GEOLOCATION_LNG VARCHAR,
+  GEOLOCATION_CITY VARCHAR,
+  GEOLOCATION_STATE VARCHAR,
+  _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  _BATCH_ID VARCHAR,
+  _SOURCE_FILENAME VARCHAR
+);
+
+COPY INTO RAW.OLIST_ORDERS
+FROM (
+  SELECT
+    $1, $2, $3, $4, $5, $6, $7, $8,
+    CURRENT_TIMESTAMP(),
+    SPLIT_PART(METADATA$FILENAME, '/', 2),
+    METADATA$FILENAME
+  FROM @olist_s3_stage/olist_orders_dataset
+)
+PATTERN = '.*\.csv';
+
+COPY INTO RAW.OLIST_CUSTOMERS
+FROM (
+  SELECT
+    $1, $2, $3, $4, $5,
+    CURRENT_TIMESTAMP(),
+    SPLIT_PART(METADATA$FILENAME, '/', 2),
+    METADATA$FILENAME
+  FROM @olist_s3_stage/olist_customers_dataset
+)
+PATTERN = '.*\.csv';
+
+COPY INTO RAW.OLIST_ORDER_ITEMS
+FROM (
+  SELECT
+    $1, $2, $3, $4, $5, $6, $7,
+    CURRENT_TIMESTAMP(),
+    SPLIT_PART(METADATA$FILENAME, '/', 2),
+    METADATA$FILENAME
+  FROM @olist_s3_stage/olist_order_items_dataset
+)
+PATTERN = '.*\.csv';
+
+COPY INTO RAW.OLIST_ORDER_REVIEWS
+FROM (
+  SELECT
+    $1, $2, $3, $4, $5, $6, $7,
+    CURRENT_TIMESTAMP(),
+    SPLIT_PART(METADATA$FILENAME, '/', 2),
+    METADATA$FILENAME
+  FROM @olist_s3_stage/olist_order_reviews_dataset
+)
+PATTERN = '.*\.csv';
+
+COPY INTO RAW.OLIST_PRODUCTS
+FROM (
+  SELECT
+    $1, $2, $3, $4, $5, $6, $7, $8, $9,
+    CURRENT_TIMESTAMP(),
+    SPLIT_PART(METADATA$FILENAME, '/', 2),
+    METADATA$FILENAME
+  FROM @olist_s3_stage/olist_products_dataset
+)
+PATTERN = '.*\.csv';
+
+COPY INTO RAW.OLIST_SELLERS
+FROM (
+  SELECT
+    $1, $2, $3, $4,
+    CURRENT_TIMESTAMP(),
+    SPLIT_PART(METADATA$FILENAME, '/', 2),
+    METADATA$FILENAME
+  FROM @olist_s3_stage/olist_sellers_dataset
+)
+PATTERN = '.*\.csv';
+
+COPY INTO RAW.OLIST_ORDER_PAYMENTS
+FROM (
+  SELECT
+    $1, $2, $3, $4, $5,
+    CURRENT_TIMESTAMP(),
+    SPLIT_PART(METADATA$FILENAME, '/', 2),
+    METADATA$FILENAME
+  FROM @olist_s3_stage/olist_order_payments_dataset
+)
+PATTERN = '.*\.csv';
+
+COPY INTO RAW.PRODUCT_CATEGORY_NAME_TRANSLATION
+FROM (
+  SELECT
+    $1, $2,
+    CURRENT_TIMESTAMP(),
+    SPLIT_PART(METADATA$FILENAME, '/', 2),
+    METADATA$FILENAME
+  FROM @olist_s3_stage/product_category_name_translation
+)
+PATTERN = '.*\.csv';
+
+COPY INTO RAW.OLIST_GEOLOCATION
+FROM (
+  SELECT
+    $1, $2, $3, $4, $5,
+    CURRENT_TIMESTAMP(),
+    SPLIT_PART(METADATA$FILENAME, '/', 2),
+    METADATA$FILENAME
+  FROM @olist_s3_stage/olist_geolocation_dataset
+)
+PATTERN = '.*\.csv';
+
+Pro-tip: Use the same metadata pattern (_LOAD_TIMESTAMP, _BATCH_ID, _SOURCE_FILENAME) for every table. This is the "Audit Trail."
+
+SELECT 'OLIST_ORDERS' AS tbl, COUNT(*) AS cnt FROM RAW.OLIST_ORDERS
+UNION ALL SELECT 'OLIST_CUSTOMERS', COUNT(*) FROM RAW.OLIST_CUSTOMERS
+UNION ALL SELECT 'OLIST_ORDER_ITEMS', COUNT(*) FROM RAW.OLIST_ORDER_ITEMS
+UNION ALL SELECT 'OLIST_ORDER_REVIEWS', COUNT(*) FROM RAW.OLIST_ORDER_REVIEWS
+UNION ALL SELECT 'OLIST_PRODUCTS', COUNT(*) FROM RAW.OLIST_PRODUCTS
+UNION ALL SELECT 'OLIST_SELLERS', COUNT(*) FROM RAW.OLIST_SELLERS
+UNION ALL SELECT 'OLIST_ORDER_PAYMENTS', COUNT(*) FROM RAW.OLIST_ORDER_PAYMENTS
+UNION ALL SELECT 'PRODUCT_CATEGORY_NAME_TRANSLATION', COUNT(*) FROM RAW.PRODUCT_CATEGORY_NAME_TRANSLATION
+UNION ALL SELECT 'OLIST_GEOLOCATION', COUNT(*) FROM RAW.OLIST_GEOLOCATION;
+
+SELECT
+  _BATCH_ID,
+  COUNT(*) AS rows_loaded,
+  MIN(_LOAD_TIMESTAMP) AS first_load_ts,
+  MAX(_LOAD_TIMESTAMP) AS last_load_ts
+FROM RAW.OLIST_ORDER_ITEMS
+GROUP BY 1
+ORDER BY 1 DESC;
+
+2️⃣ Initialize dbt
+
+In your bash terminal, navigate to the dbt/ folder and initialize the project:
+
+cd dbt
+dbt init cxm_medtech
+When prompted for the database, choose snowflake.
+
+It will ask for account, user, password, role, warehouse. Use the details from Day 1.
+
+3️⃣ Configure dbt_project.yml
+
+Open dbt/cxm_medtech/dbt_project.yml. Update the models section to reflect our medallion architecture:
+
+models:
+  cxm_medtech:
+    staging:
+      +schema: stg
+      +materialized: view
+    intermediate:
+      +schema: int
+      +materialized: ephemeral
+    marts:
+      +schema: marts
+      +materialized: table
+
+4️⃣ Create the sources.yml
+
+This tells dbt where your RAW data lives. Create dbt/cxm_medtech/models/staging/sources.yml:
+
+version: 2
+
+sources:
+  - name: olist
+    database: CXM_MEDTECH
+    schema: RAW
+    tables:
+      - name: olist_orders
+      - name: olist_customers
+      - name: olist_order_items
+      - name: olist_order_reviews
+      - name: olist_products
+      - name: olist_sellers
+      - name: olist_order_payments
+      - name: product_category_name_translation
+      - name: olist_geolocation
+
+### D) Exact Commands to Run
+
+Test your dbt connection
+
+cd dbt/cxm_medtech
+dbt debug
+
+### E) Validation Queries
+
+In Snowflake, verify all 6 tables are loaded:
+
+Copy
+SELECT 'orders' as tbl, count(*) FROM RAW.OLIST_ORDERS
+UNION ALL
+SELECT 'customers', count(*) FROM RAW.OLIST_CUSTOMERS
+-- ... repeat for all 6
+
+### F) Common Failure Modes
+
+dbt Profiles: If dbt debug fails, it’s usually a profiles.yml issue. dbt usually stores this in ~/.dbt/profiles.yml. Ensure the account field does not include https://. It should just be PJKJJTN-RDC47631.
+Schema Names: Ensure dbt is pointing to CXM_MEDTECH.
+
+### G) What I should commit to Git
+
+dbt/cxm_medtech/ (The whole folder created by dbt init)
+dbt/cxm_medtech/models/staging/sources.yml
+Commit Message: feat: initialize dbt project and define raw sources
+
+### H) Definition of Done (DoD) Day 3
+
+All 6 Olist tables loaded into Snowflake RAW.
+dbt debug passes (Green checkmarks for connection).
+sources.yml created and pointing to the correct Snowflake tables.
+
+### I) What you should reply back with
+
+Confirmation that all 6 tables are in RAW.
+The output of dbt debug (just the last few lines showing success).
+Did you have to modify profiles.yml manually?
