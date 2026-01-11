@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: olist
+    database: CXM_MEDTECH
+    schema: RAW
+    tables:
+      - name: olist_orders
+      - name: olist_customers
+      - name: olist_order_items
+      - name: olist_order_reviews
+      - name: olist_products
+      - name: olist_sellers
+      - name: olist_order_payments
+      - name: product_category_name_translation
+      - name: olist_geolocation
