@@ -1,5 +1,6 @@
 select
     shipment_id,
+    account_id,
     hcp_id,
     shipment_status,
     ordered_at,
@@ -8,5 +9,6 @@ select
     is_on_time,
     days_to_deliver,
     survey_score,
-    nps_category
+    nps_category,
+    survey_responded_at
 from {{ ref('int_shipments_enriched') }}
