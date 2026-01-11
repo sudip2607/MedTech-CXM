@@ -36,7 +36,8 @@ models:
       +materialized: view
     intermediate:
       +schema: int
-      +materialized: ephemeral
+      #+materialized: ephemeral
+      +materialized: view
     marts:
       +schema: marts
       +materialized: table

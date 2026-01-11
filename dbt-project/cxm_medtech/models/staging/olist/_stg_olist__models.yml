@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: stg_olist__orders
+    columns:
+      - name: shipment_id
+        tests:
+          - unique
+          - not_null
+      - name: hcp_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_olist__hcp')
+                field: hcp_id
+
+  - name: stg_olist__hcp
+    columns:
+      - name: hcp_id
+        tests:
+          - unique
+          - not_null
