@@ -1653,3 +1653,464 @@ Commit Message "feat: add marts layer with facts, dimensions, and cx health scor
  MARTS schema contains facts + dimensions
  CX Health Score visible and categorized
  dbt docs updated and pushed to S3
+
+## Day 9 – Power BI Semantic Model & Core CX Dashboards
+
+This is where everything becomes visible and compelling.
+
+### A) Today’s Outcome Day 9
+
+By the end of Day 9 we will have:
+
+- A clean Power BI semantic model (star schema)
+- Core DAX measures for CX
+- 3 demo‑ready report pages:
+- Executive CX Overview
+- Account 360
+- Support & Operations (v1 using shipment + SLA proxies)
+
+### B) What we'll Import into Power BI Day 9
+
+- Tables to load (Import mode ✅)
+- From CXM_MEDTECH.MARTS:
+Facts
+- FCT_SHIPMENTS
+- FCT_SHIPMENT_ITEMS
+- FCT_ACCOUNT_CX_HEALTH
+
+Dimensions
+
+- DIM_ACCOUNT
+- DIM_HCP
+
+✅ This gives you a clean star schema
+✅ No RAW / STG / INT tables in Power BI
+
+### C) Power BI – Semantic Model Setup
+
+1️⃣ Relationships (VERY IMPORTANT)
+Create these relationships:
+
+From (Fact)	To (Dim)	Cardinality
+FCT_SHIPMENTS.hcp_id	DIM_HCP.hcp_id	Many → One
+FCT_SHIPMENT_ITEMS.account_id	DIM_ACCOUNT.account_id	Many → One
+FCT_ACCOUNT_CX_HEALTH.account_id	DIM_ACCOUNT.account_id	One → One
+FCT_SHIPMENT_ITEMS.shipment_id	FCT_SHIPMENTS.shipment_id	Many → One
+
+✅ Single‑direction filter
+✅ Dim → Fact only
+
+### D) Core DAX Measures (Copy/Paste) Day 9
+
+Create a Measures table (Home → Enter Data → empty table → rename to Measures).
+
+1️⃣ Shipment Volume
+DAX
+
+Total Shipments = DISTINCTCOUNT(FCT_SHIPMENTS[shipment_id])
+Total Revenue = SUM(FCT_SHIPMENT_ITEMS[total_line_value])
+
+2️⃣ On‑Time Delivery %
+DAX
+
+On Time Delivery % =
+DIVIDE(
+    SUM(FCT_SHIPMENTS[is_on_time]),
+    COUNT(FCT_SHIPMENTS[shipment_id])
+)
+
+3️⃣ NPS Breakdown
+DAX
+
+Promoter % =
+DIVIDE(
+    CALCULATE(COUNT(FCT_SHIPMENTS[shipment_id]), FCT_SHIPMENTS[nps_category] = "Promoter"),
+    COUNT(FCT_SHIPMENTS[shipment_id])
+)
+
+DAX
+
+Detractor % =
+DIVIDE(
+    CALCULATE(COUNT(FCT_SHIPMENTS[shipment_id]), FCT_SHIPMENTS[nps_category] = "Detractor"),
+    COUNT(FCT_SHIPMENTS[shipment_id])
+)
+
+Net Promoter Score (NPS) = ([Promoter %] - [Detractor %]) * 100
+
+4️⃣ Avg CX Health Score
+DAX
+
+Avg CX Health Score =
+AVERAGE(FCT_ACCOUNT_CX_HEALTH[cx_health_score])
+
+Latest Avg NPS = AVERAGE(FCT_SHIPMENTS[survey_score])
+
+Historical Avg NPS = AVERAGE(FCT_REVIEWS[survey_score])
+
+Total Reviews Received = COUNT(FCT_REVIEWS[review_key])
+
+Account Health Score = MAX(FCT_ACCOUNT_CX_HEALTH[cx_health_score])
+
+### E) Report Pages (Minimum Lovable Product) Day 9
+
+📊 Page 1: Executive CX Overview
+Visuals
+
+KPI Cards:
+Total Shipments
+On‑Time Delivery %
+Avg CX Health Score
+Stacked bar:
+Accounts by cx_health_status
+Trend line:
+Shipments over time
+Audience: Execs / Leadership
+
+🏥 Page 2: Account 360
+Filters
+
+Account (Hospital)
+Visuals
+
+Account Segment
+Total Lifetime Value
+CX Health Score (gauge or card)
+Shipment history table
+On‑time vs late breakdown
+Audience: Account Managers / CX Leaders
+
+🛠️ Page 3: Operations & Risk (v1)
+Visuals
+
+Late shipments by state
+Avg days to deliver
+Detractor shipments by account
+Table: Top “At Risk” accounts
+Audience: Ops / Support Leadership
+
+### F) Naming & Polish (Enterprise Touch) Day 9
+
+Hide surrogate keys
+Rename tables:
+FCT_ → “Fact – Shipments”
+DIM_ → “Dim – Account”
+Format percentages
+Disable Auto Date/Time
+G) Validation Checklist
+
+✅ Filters propagate correctly
+✅ Account slicer affects all visuals
+✅ No many‑to‑many relationships
+✅ Measures behave correctly at different grains
+
+### H) What to Commit to Git Day 9
+
+Files
+
+powerbi/README.md (describe model + pages)
+Screenshot(s) of dashboards (PNG)
+Commit Message: "feat: add power bi semantic model and cx dashboards"
+
+Issue
+While doing Power BI modeling, we saw there are duplicates in SHIPMENT FACT. 
+
+Can I do like below?
+
+int_shipments_enriched.sql will have latest review. Add dat test around this
+
+Review detail will have separate fact. We won't restrict reviews and want to see all reviews
+
+Yes — that’s the best-practice pattern:
+
+int_shipments_enriched keeps exactly 1 row per shipment and includes the latest review (so Power BI can safely relate Shipment Items → Shipments).
+fct_reviews keeps all reviews (detail fact) so you can analyze every review without losing history.
+Below are copy/paste-ready changes.
+
+#### 1) Update models/intermediate/int_shipments_enriched.sql (latest review only)
+
+Replace your current file content with this pattern:
+
+with shipments as (
+    select * from {{ ref('stg_olist__orders') }}
+),
+
+hcp as (
+    select * from {{ ref('stg_olist__hcp') }}
+),
+
+-- Keep ALL reviews in staging, but select ONLY the latest per shipment here
+latest_review as (
+    select
+        shipment_id,
+        survey_score,
+        survey_responded_at,
+
+        case
+            when survey_score >= 4 then 'Promoter'
+            when survey_score = 3 then 'Passive'
+            when survey_score is not null then 'Detractor'
+            else null
+        end as nps_category
+
+    from (
+        select
+            shipment_id,
+            survey_score,
+            survey_responded_at,
+            row_number() over (
+                partition by shipment_id
+                order by survey_responded_at desc nulls last
+            ) as rn
+        from {{ ref('stg_olist__reviews') }}
+    )
+    where rn = 1
+),
+
+final as (
+    select
+        s.shipment_id,
+        s.hcp_id,
+        s.shipment_status,
+        s.ordered_at,
+        s.approved_at,
+        s.delivered_at,
+        s.estimated_delivery_at,
+
+        -- HCP details
+        h.city as hcp_city,
+        h.state as hcp_state,
+
+        -- Latest review (one row per shipment, safe)
+        r.survey_score,
+        r.nps_category,
+        r.survey_responded_at,
+
+        -- On-time flag
+        case
+            when s.delivered_at is null or s.estimated_delivery_at is null then null
+            when s.delivered_at <= s.estimated_delivery_at then 1
+            else 0
+        end as is_on_time,
+
+        -- Days to deliver
+        case
+            when s.delivered_at is null or s.ordered_at is null then null
+            else datediff('day', s.ordered_at, s.delivered_at)
+        end as days_to_deliver
+
+    from shipments s
+    left join hcp h
+        on s.hcp_id = h.hcp_id
+    left join latest_review r
+        on s.shipment_id = r.shipment_id
+)
+
+select * from final
+
+Result: int_shipments_enriched becomes a true “shipment header” table and can be the 1-side in Power BI relationships.
+
+#### 2) Add dbt tests for shipment grain (INT + MARTS)
+
+Create (or update) this file for intermediate test:
+
+models/intermediate/intermediate.yml
+
+version: 2
+
+models:
+  - name: int_shipments_enriched
+    description: "Shipment header enriched with latest review per shipment."
+    columns:
+      - name: shipment_id
+        tests:
+          - not_null
+          - unique
+
+And add a marts test file:
+
+models/marts/core/core.yml
+
+version: 2
+
+models:
+  - name: fct_shipments
+    columns:
+      - name: shipment_id
+        tests:
+          - not_null
+          - unique
+
+  - name: fct_reviews
+    columns:
+      - name: review_id
+        tests:
+          - not_null
+          - unique
+
+      - name: shipment_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('fct_shipments')
+              field: shipment_id
+
+#### 3) Create the Review detail fact (ALL reviews)
+
+Create:
+
+models/marts/core/fct_reviews.sql
+
+select
+    {{ dbt_utils.generate_surrogate_key([
+        'review_id',
+        'shipment_id',
+        'survey_responded_at'
+    ]) }} as review_key,
+
+    review_id,
+    shipment_id,
+    survey_score,
+    survey_responded_at,
+
+    case
+        when survey_score >= 4 then 'Promoter'
+        when survey_score = 3 then 'Passive'
+        when survey_score is not null then 'Detractor'
+        else null
+    end as nps_category
+
+from {{ ref('stg_olist__reviews') }}
+
+This preserves every review record.
+
+#### 4) Ensure fct_shipments stays 1 row per shipment (latest review OK)
+
+Update:
+
+models/marts/core/fct_shipments.sql
+
+select
+    shipment_id,
+    hcp_id,
+    shipment_status,
+    ordered_at,
+    delivered_at,
+    estimated_delivery_at,
+    is_on_time,
+    days_to_deliver,
+
+    -- latest review fields are safe here (still 1 row per shipment)
+    survey_score,
+    nps_category,
+    survey_responded_at
+from {{ ref('int_shipments_enriched') }}
+
+#### 5) IMPORTANT: Fix int_accounts_360 to avoid review double-counting
+
+Your earlier int_accounts_360 likely joins items → shipments, which can duplicate survey score across multiple items in a shipment and distort averages.
+
+Replace your account_metrics logic with “separate aggregations then join”:
+
+Update models/intermediate/int_accounts_360.sql to this structure:
+
+with account_base as (
+    select * from {{ ref('stg_olist__accounts') }}
+),
+
+items as (
+    select * from {{ ref('int_shipment_items_enriched') }}
+),
+
+shipments as (
+    select * from {{ ref('int_shipments_enriched') }}
+),
+
+-- Commercial metrics from items (correct grain for value)
+item_metrics as (
+    select
+        account_id,
+        count(distinct shipment_id) as total_shipments,
+        count(distinct device_id) as unique_devices_ordered,
+        sum(total_line_value) as total_account_value
+    from items
+    group by 1
+),
+
+-- CX metrics from shipments (correct grain for review + on-time)
+shipment_metrics as (
+    select
+        a.account_id,
+        avg(s.survey_score) as avg_account_nps_score,
+        avg(s.is_on_time) as on_time_delivery_rate
+    from shipments s
+    left join items a
+        on s.shipment_id = a.shipment_id
+    group by 1
+),
+
+final as (
+    select
+        a.account_id,
+        a.city,
+        a.state,
+
+        coalesce(i.total_shipments, 0) as total_shipments,
+        coalesce(i.unique_devices_ordered, 0) as unique_devices_ordered,
+        coalesce(i.total_account_value, 0) as total_lifetime_value,
+
+        sm.avg_account_nps_score,
+        sm.on_time_delivery_rate,
+
+        case
+            when coalesce(i.total_account_value, 0) > 10000 then 'Tier 1 (Key Account)'
+            when coalesce(i.total_account_value, 0) > 2000 then 'Tier 2 (Growth)'
+            else 'Tier 3 (Standard)'
+        end as account_segment
+
+    from account_base a
+    left join item_metrics i
+        on a.account_id = i.account_id
+    left join shipment_metrics sm
+        on a.account_id = sm.account_id
+)
+
+select * from final
+
+(If you prefer, we can compute shipment_metrics by mapping shipment_id → account_id via a distinct bridge first; the above works and is simple.)
+
+#### 6) Run dbt (minimal selection)
+
+dbt run --select int_shipments_enriched int_accounts_360 fct_shipments fct_reviews fct_account_cx_health dim_account
+dbt test --select int_shipments_enriched fct_shipments fct_reviews
+
+#### 7) Power BI relationships (after rebuild)
+
+🏗️ The Power BI Relationship Map
+Set these up in the Model View. Ensure all cross-filter directions are Single (pointing from Dimension to Fact) unless specified.
+
+1. The Core "Shipment" Star
+
+From (Dimension/Header)	To (Fact/Detail)	Cardinality	Key
+DIM_HCP	FCT_SHIPMENTS	1 : Many	hcp_id
+FCT_SHIPMENTS	FCT_SHIPMENT_ITEMS	1 : Many	shipment_id
+FCT_SHIPMENTS	FCT_REVIEWS	1 : Many	shipment_id
+
+2. The Commercial / Account Star
+
+From (Dimension)	To (Fact)	Cardinality	Key
+DIM_ACCOUNT	FCT_SHIPMENT_ITEMS	1 : Many	account_id
+DIM_ACCOUNT	FCT_ACCOUNT_CX_HEALTH	1 : 1	account_id
+
+Slice shipments/items by account/HCP
+Drill into all reviews without breaking shipment grain
+Quick check (to confirm we fixed the duplicate issue)
+
+After running, check in Snowflake:
+
+select
+  count(*) as rows,
+  count(distinct shipment_id) as distinct_shipments
+from CXM_MEDTECH.MARTS.FCT_SHIPMENTS;
+
+The rows and distinct_shipments counts should be identical, confirming 1 row per shipment.

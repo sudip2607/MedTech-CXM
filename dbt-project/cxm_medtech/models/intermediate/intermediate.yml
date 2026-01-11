@@ -1,0 +1,10 @@
+version: 2
+
+models:
+  - name: int_shipments_enriched
+    description: "Shipment header enriched with latest review per shipment."
+    columns:
+      - name: shipment_id
+        tests:
+          - not_null
+          - unique
