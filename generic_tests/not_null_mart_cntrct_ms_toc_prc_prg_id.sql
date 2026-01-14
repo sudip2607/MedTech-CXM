@@ -1,0 +1,1 @@
+{{ test_not_null(column_name="prc_prg_id", model=get_where_subquery(ref('mart_cntrct_ms_toc'))) }}
