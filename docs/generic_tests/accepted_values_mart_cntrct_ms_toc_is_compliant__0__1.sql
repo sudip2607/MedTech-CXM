@@ -1,0 +1,1 @@
+{{ test_accepted_values(column_name="is_compliant", model=get_where_subquery(ref('mart_cntrct_ms_toc')), values=[0,1]) }}
