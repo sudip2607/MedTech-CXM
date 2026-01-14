@@ -1,0 +1,205 @@
+version: 2
+
+sources:
+  - name: md_dwh
+    description: 'Medical Devices Data Warehouse - Source of truth for contract, compliance, and sales data'
+    database: redshift_db
+    schema: md_dwh
+    tables:
+      - name: dim_cntrc
+        description: 'Contract Master Dimension - All contracts with status and dates'
+        columns:
+          - name: cntrc_id
+            description: 'Primary Key - Contract ID'
+          - name: cntrc_nm
+            description: 'Contract Name'
+          - name: cntrc_sts
+            description: 'Contract Status (Active, Inactive, Expired)'
+          - name: prc_prg_id
+            description: 'Foreign Key - Links to Pricing Program'
+          - name: cntrc_strt_dt
+            description: 'Contract Start Date'
+          - name: cntrc_end_dt
+            description: 'Contract End Date'
+
+      - name: dim_prc_prg_cmpli_per_rslts
+        description: 'Pricing Program Compliance Period Results - Historical compliance periods and rankings'
+        columns:
+          - name: cntrc_id
+            description: 'Contract ID'
+          - name: prc_prg_id
+            description: 'Pricing Program ID'
+          - name: cmt_cust_id
+            description: 'Customer ID (null for contract-level periods)'
+          - name: cmpnt_id
+            description: 'Component ID'
+          - name: per_strt_dt
+            description: 'Period Start Date'
+          - name: per_end_dt
+            description: 'Period End Date'
+          - name: per_num
+            description: 'Period Number (sequential)'
+          - name: rank_scope
+            description: 'Ranking Scope (no_cust=contract-level, with_cust=customer-level)'
+          - name: rnk_val
+            description: 'Rank value (1=most recent)'
+
+      - name: dim_prc_prg_cmpnt
+        description: 'Pricing Program Component Definition - Component tiers and rebate structures'
+        columns:
+          - name: prc_prg_id
+            description: 'Pricing Program ID'
+          - name: cmpnt_id
+            description: 'Component ID'
+          - name: cmpnt_nm
+            description: 'Component Name'
+          - name: tier_basis_type
+            description: 'Tier Basis Type (MARKET SHARE, SALES VOLUME, VALUE, etc.)'
+          - name: tier_num
+            description: 'Tier Number'
+          - name: tier_min_pct
+            description: 'Tier Minimum Percentage (Market Share)'
+          - name: tier_max_pct
+            description: 'Tier Maximum Percentage (Market Share)'
+          - name: tier_min_val
+            description: 'Tier Minimum Value (Sales Volume/Value basis)'
+          - name: tier_max_val
+            description: 'Tier Maximum Value (Sales Volume/Value basis)'
+          - name: rebate_pct
+            description: 'Rebate Percentage for this tier'
+
+      - name: dim_prc_prg
+        description: 'Pricing Program Master Dimension - Program definitions'
+        columns:
+          - name: prc_prg_id
+            description: 'Primary Key - Pricing Program ID'
+          - name: prc_prg_nm
+            description: 'Pricing Program Name'
+          - name: prc_prg_sts
+            description: 'Program Status'
+
+      - name: dim_prc_cmpnt_cust_elig
+        description: 'Pricing Component Customer Eligibility - Which customers are eligible for each component'
+        columns:
+          - name: cmpnt_id
+            description: 'Component ID'
+          - name: prc_prg_id
+            description: 'Pricing Program ID'
+          - name: cmt_cust_id
+            description: 'Customer ID'
+          - name: elig_st_dt
+            description: 'Eligibility Start Date'
+          - name: elig_end_dt
+            description: 'Eligibility End Date'
+
+      - name: dim_prc_cmpnt_qual_prod
+        description: 'Pricing Component Qualified Products - Which products qualify for each component'
+        columns:
+          - name: cmpnt_id
+            description: 'Component ID'
+          - name: prc_prg_id
+            description: 'Pricing Program ID'
+          - name: prod_id
+            description: 'Product ID'
+          - name: prod_ctgry_id
+            description: 'Product Category ID'
+          - name: qual_st_dt
+            description: 'Qualification Start Date'
+          - name: qual_end_dt
+            description: 'Qualification End Date'
+
+      - name: fct_prc_cmpnt_prod_cntrctd
+        description: 'Pricing Component Product Contracted Pricing Facts - Pricing for each product'
+        columns:
+          - name: cmpnt_id
+            description: 'Component ID'
+          - name: prod_id
+            description: 'Product ID'
+          - name: cntrctd_prc
+            description: 'Contracted Price'
+          - name: lst_prc
+            description: 'List Price'
+          - name: dscnt_pct
+            description: 'Discount Percentage'
+
+      - name: fct_sls_trn
+        description: 'Sales Transaction Facts - Individual sales transactions'
+        columns:
+          - name: sls_trn_id
+            description: 'Sales Transaction ID'
+          - name: cmt_cust_id
+            description: 'Customer ID'
+          - name: prod_id
+            description: 'Product ID'
+          - name: idn_id
+            description: 'IDN ID'
+          - name: fclty_id
+            description: 'Facility ID'
+          - name: sls_amt
+            description: 'Sales Amount'
+          - name: qty
+            description: 'Quantity'
+          - name: sls_dt
+            description: 'Sales Date'
+
+      - name: dim_cmt_cust
+        description: 'Customer Master Dimension - Customer information'
+        columns:
+          - name: cmt_cust_id
+            description: 'Primary Key - Customer ID'
+          - name: cust_nm
+            description: 'Customer Name'
+          - name: idn_id
+            description: 'IDN ID'
+          - name: fclty_id
+            description: 'Primary Facility ID'
+
+      - name: dim_idn
+        description: 'IDN (Integrated Delivery Network) Dimension - IDN groupings'
+        columns:
+          - name: idn_id
+            description: 'Primary Key - IDN ID'
+          - name: idn_nm
+            description: 'IDN Name'
+
+      - name: dim_fclty
+        description: 'Facility (Provider/Hospital) Dimension - Individual facility information'
+        columns:
+          - name: fclty_id
+            description: 'Primary Key - Facility ID'
+          - name: fclty_nm
+            description: 'Facility Name'
+          - name: idn_id
+            description: 'IDN ID'
+
+      - name: dim_prc_tier
+        description: 'Pricing Tier Configuration'
+        columns:
+          - name: tier_id
+            description: 'Tier ID'
+          - name: tier_num
+            description: 'Tier Number'
+
+      - name: dim_cmpnt
+        description: 'Contract Component Dimension'
+        columns:
+          - name: cmpnt_id
+            description: 'Component ID'
+          - name: cmpnt_nm
+            description: 'Component Name'
+
+      - name: dim_prod
+        description: 'Product Master Dimension'
+        columns:
+          - name: prod_id
+            description: 'Product ID'
+          - name: prod_nm
+            description: 'Product Name'
+
+      - name: fct_rebate_calc
+        description: 'Rebate Calculation Facts'
+        columns:
+          - name: cntrc_id
+            description: 'Contract ID'
+          - name: rebate_amt
+            description: 'Rebate Amount'

@@ -1,0 +1,59 @@
+version: 2
+
+models:
+  - name: int_cntrct_rcnt_period
+    description: |
+      Recent contract period base table filtering contracts active within last 24 months.
+      This is the foundation table for all downstream workflows.
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID (Primary Key)'
+        tests:
+          - not_null
+          - unique
+      - name: cntrc_sts
+        description: 'Contract status code'
+      - name: cntrc_nm
+        description: 'Contract name'
+      - name: cntrc_strt_dt
+        description: 'Contract start date'
+      - name: cntrc_end_dt
+        description: 'Contract end date'
+
+  - name: int_cntrct_compli_period_toc
+    description: |
+      Latest compliance period per contract/program/component.
+      Used for Time of Compliance (TOC) reporting - point-in-time snapshot.
+    columns:
+      - name: rank_scope
+        description: |
+          Indicates aggregation level:
+          - 'no_cust': Contract/program/component level
+          - 'with_cust': Customer-level breakdown
+        tests:
+          - accepted_values:
+              values: ['no_cust', 'with_cust']
+
+  - name: int_cntrct_compli_period_anltcs
+    description: |
+      All historical compliance periods for analytics and trending.
+      No ranking applied - includes full compliance history.
+
+  - name: int_cntrct_tier_components_ms
+    description: |
+      Market Share tier components with MS percentage thresholds.
+      Used to determine tier achievement based on market share performance.
+    columns:
+      - name: tier_basis_type
+        description: 'Type of tier (MARKET SHARE)'
+        tests:
+          - accepted_values:
+              values: ['MARKET SHARE']
+
+  - name: int_cntrct_tier_components_nms
+    description: |
+      Non-Market Share tier components (volume-based, value-based).
+      Filtered to most recent tier per contract.
+    columns:
+      - name: tier_basis_type
+        description: 'Type of tier (not MARKET SHARE)'

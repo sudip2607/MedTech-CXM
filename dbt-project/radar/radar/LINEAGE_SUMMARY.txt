@@ -1,0 +1,144 @@
+COLUMN-LEVEL LINEAGE DOCUMENTATION - COMPLETE SUMMARY
+=====================================================================
+
+Date Generated: January 14, 2026
+Workflow: MS TOC (Market Share Time-of-Compliance)
+Total Models: 17 (5 base + 4 input + 2 fact + 4 validation + 1 comprehensive + 1 mart)
+Total Sources: 13
+Total Columns Documented: 150+
+
+WHAT IS COLUMN-LEVEL LINEAGE?
+=====================================================================
+
+Column-level lineage extends table-level lineage by tracking:
+  ✓ Which SOURCE columns feed into each OUTPUT column
+  ✓ How columns are TRANSFORMED (filtered, aggregated, joined, calculated)
+  ✓ Which MODELS use each column at each layer
+  ✓ Data transformations and business logic applications
+
+DOCUMENTATION FILES CREATED (3 files)
+=====================================================================
+
+1. COLUMN_LINEAGE.md (22 KB)
+   - Comprehensive column-by-column lineage documentation
+   - Best for: Understanding detailed column flows and transformations
+
+2. COLUMN_LINEAGE_FLOW_DIAGRAM.md (43 KB)
+   - ASCII visual diagrams of data flows
+   - Best for: Visual understanding and presentations
+
+3. COLUMN_LINEAGE_QUICK_REFERENCE.md (12 KB)
+   - Quick lookup guide and summary
+   - Best for: Quick reference and new user onboarding
+
+KEY TRANSFORMATION PATTERNS
+=====================================================================
+
+Pattern 1: PRIMARY KEY PASS-THROUGH
+  - Columns: cntrc_id, prc_prg_id, cmpnt_id
+  - Flow: Through all 17 models unchanged
+  - Impact: VERY HIGH - any filtering affects entire pipeline
+
+Pattern 2: SCOPE REDUCTION VIA FILTERING
+  - Source: dim_prc_prg_cmpnt (ALL) 
+  - Base: int_cntrct_tier_components_ms (MS ONLY)
+  - Filter: tier_basis_type = 'MARKET SHARE'
+  - Impact: VERY HIGH - separates MS from NMS workflows
+
+Pattern 3: AGGREGATION
+  - Source: fct_sls_trn (transactions)
+  - Fact tables: SUM grouped by idn/facility
+  - Impact: MEDIUM-HIGH - reduces data volume while enriching metrics
+
+Pattern 4: CALCULATED METRICS
+  - Validation: ms_pct = (qualified_sales / total_sales) * 100
+  - Ranked: rebate_amt = qualified_sales * (rebate_pct / 100)
+  - Impact: VERY HIGH - critical business metrics
+
+Pattern 5: MULTI-LEVEL HIERARCHY (UNION)
+  - IDN path + Facility path combined in comprehensive fact
+  - Impact: MEDIUM - enables dual-level analysis
+
+VALIDATION & TESTING
+=====================================================================
+
+✓ dbt parse: SUCCESSFUL (0 errors)
+✓ All 17 models parse correctly
+✓ All source references validated
+✓ All column descriptions documented
+✓ dbt Manifest location: target/manifest.json
+✓ dbt Documentation: http://localhost:8000
+
+HOW TO USE THE DOCUMENTATION
+=====================================================================
+
+FOR DATA ENGINEERS:
+  1. Open COLUMN_LINEAGE_FLOW_DIAGRAM.md to visualize data flows
+  2. Consult COLUMN_LINEAGE.md for detailed transformations
+  3. Use dbt docs site http://localhost:8000 for interactive lineage
+
+FOR BI ANALYSTS:
+  1. Review COLUMN_LINEAGE_QUICK_REFERENCE.md for metric definitions
+  2. Check COLUMN_LINEAGE.md for calculation formulas
+  3. Use dbt docs to trace metrics back to sources
+
+FOR BUSINESS USERS:
+  1. Read COLUMN_LINEAGE_QUICK_REFERENCE.md summaries
+  2. Understand metric definitions and business logic
+  3. Know which columns to monitor for data quality
+
+TRANSFORMATION LAYERS
+=====================================================================
+
+Layer 0: SOURCES (13 tables)
+  - 8 dimension tables, 2 fact tables, 3 complex dimension tables
+
+Layer 1: BASE MODELS (5 models)
+  - int_cntrct_rcnt_period
+  - int_cntrct_compli_period_toc
+  - int_cntrct_compli_period_anltcs
+  - int_cntrct_tier_components_ms
+  - int_cntrct_tier_components_nms
+
+Layer 1.1.1: INPUT/ELIGIBILITY (4 models)
+  - Eligible customers, qualified products, pricing, filtered sales
+
+Layer 1.1.1.1: FACT AGGREGATION (2 models)
+  - IDN-level and facility-level sales aggregations
+
+Layer 1.1.1.1.1: VALIDATION/COMPLIANCE (4 models)
+  - Market share calculations, tier assignments, rebate calculations
+
+Layer 1.1.1.1.1.1: COMPREHENSIVE FACT (1 model)
+  - Unified view with all metrics
+
+Layer FINAL: MART (1 model)
+  - Single source of truth for reporting
+
+HIGHEST IMPACT COLUMNS
+=====================================================================
+
+  1. cntrc_id - affects contract scope across all models
+  2. sls_amt - basis for all sales metrics and rebate calculations
+  3. tier_min_pct, tier_max_pct - business rule enforcement
+  4. ms_pct - critical calculation for compliance determination
+
+RECOMMENDED NEXT STEPS
+=====================================================================
+
+IMMEDIATE:
+  - Review column lineage documentation in this folder
+  - Visit http://localhost:8000 to explore dbt docs
+  - Share documentation with data consumers
+
+SHORT TERM:
+  - Create column lineage for MS ANLTCS workflow
+  - Document NMS TOC base models
+  - Add data quality checks for critical columns
+
+MEDIUM TERM:
+  - Implement dbt tests for column transformations
+  - Build data quality dashboard
+  - Create impact analysis tool
+
+For detailed information, see the markdown documentation files.

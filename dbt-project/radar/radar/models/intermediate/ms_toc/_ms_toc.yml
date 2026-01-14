@@ -1,0 +1,521 @@
+version: 2
+
+models:
+  - name: int_cntrct_elgbl_cust_ms_toc
+    description: |
+      **Intermediate Model - Level 1.1.1 (Input Layer)**
+      
+      Eligible customers for Market Share compliance.
+      Joins customer eligibility with tier definitions and latest compliance periods.
+      
+      **Column Lineage:**
+      - cntrc_id ← ref(int_cntrct_tier_components_ms.cntrc_id)
+      - prc_prg_id ← source(md_dwh.dim_prc_cmpnt_cust_elig.prc_prg_id)
+      - cmpnt_id ← source(md_dwh.dim_prc_cmpnt_cust_elig.cmpnt_id)
+      - cmt_cust_id ← source(md_dwh.dim_prc_cmpnt_cust_elig.cmt_cust_id)
+      - elig_st_dt ← source(md_dwh.dim_prc_cmpnt_cust_elig.elig_st_dt)
+      - elig_end_dt ← source(md_dwh.dim_prc_cmpnt_cust_elig.elig_end_dt)
+      - compli_per_strt_dt ← ref(int_cntrct_compli_period_toc.per_strt_dt)
+      - compli_per_end_dt ← ref(int_cntrct_compli_period_toc.per_end_dt)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID - From tier definitions'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: cmt_cust_id
+        description: 'Customer ID - Eligible customer'
+      - name: elig_st_dt
+        description: 'Eligibility Start Date'
+      - name: elig_end_dt
+        description: 'Eligibility End Date'
+      - name: compli_per_strt_dt
+        description: 'Compliance Period Start Date - Latest period'
+      - name: compli_per_end_dt
+        description: 'Compliance Period End Date - Latest period'
+
+  - name: int_cntrct_qual_prod_ms_toc
+    description: |
+      **Intermediate Model - Level 1.1.1 (Input Layer)**
+      
+      Qualified products for Market Share calculation.
+      Joins qualified product list with tier definitions and compliance periods.
+      
+      **Column Lineage:**
+      - cntrc_id ← ref(int_cntrct_tier_components_ms.cntrc_id)
+      - prc_prg_id ← source(md_dwh.dim_prc_cmpnt_qual_prod.prc_prg_id)
+      - cmpnt_id ← source(md_dwh.dim_prc_cmpnt_qual_prod.cmpnt_id)
+      - prod_id ← source(md_dwh.dim_prc_cmpnt_qual_prod.prod_id)
+      - prod_ctgry_id ← source(md_dwh.dim_prc_cmpnt_qual_prod.prod_ctgry_id)
+      - qual_st_dt ← source(md_dwh.dim_prc_cmpnt_qual_prod.qual_st_dt)
+      - qual_end_dt ← source(md_dwh.dim_prc_cmpnt_qual_prod.qual_end_dt)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID - From tier definitions'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: prod_id
+        description: 'Product ID - Qualified product'
+      - name: prod_ctgry_id
+        description: 'Product Category ID'
+      - name: qual_st_dt
+        description: 'Qualification Start Date'
+      - name: qual_end_dt
+        description: 'Qualification End Date'
+
+  - name: int_cntrct_prod_cntrctd_prc_ms_toc
+    description: |
+      **Intermediate Model - Level 1.1.1 (Input Layer)**
+      
+      Product contracted pricing for Market Share calculation.
+      Associates qualified products with their contracted prices and discounts.
+      
+      **Column Lineage:**
+      - cntrc_id ← ref(int_cntrct_tier_components_ms.cntrc_id)
+      - prc_prg_id ← ref(int_cntrct_compli_period_toc.prc_prg_id)
+      - cmpnt_id ← source(md_dwh.fct_prc_cmpnt_prod_cntrctd.cmpnt_id)
+      - prod_id ← source(md_dwh.fct_prc_cmpnt_prod_cntrctd.prod_id)
+      - cntrctd_prc ← source(md_dwh.fct_prc_cmpnt_prod_cntrctd.cntrctd_prc)
+      - lst_prc ← source(md_dwh.fct_prc_cmpnt_prod_cntrctd.lst_prc)
+      - dscnt_pct ← source(md_dwh.fct_prc_cmpnt_prod_cntrctd.dscnt_pct)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID - From compliance period'
+      - name: prc_prg_id
+        description: 'Pricing Program ID - From compliance period'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: prod_id
+        description: 'Product ID'
+      - name: cntrctd_prc
+        description: 'Contracted Price - Price per unit'
+      - name: lst_prc
+        description: 'List Price - Standard list price'
+      - name: dscnt_pct
+        description: 'Discount Percentage - Applied discount rate'
+
+  - name: int_cntrct_sls_ms_toc
+    description: |
+      **Intermediate Model - Level 1.1.1 (Input Layer)**
+      
+      Sales transactions for Market Share compliance.
+      Filters sales to eligible customers and qualified products only.
+      
+      **Business Logic:**
+      - Joins sales transactions with customer and product eligibility lists
+      - Filters to eligible customers (inner join with int_cntrct_elgbl_cust_ms_toc)
+      - Filters to qualified products (inner join with int_cntrct_qual_prod_ms_toc)
+      - Retains transaction-level granularity
+      
+      **Column Lineage:**
+      - sls_trn_id ← source(md_dwh.fct_sls_trn.sls_trn_id)
+      - cmt_cust_id ← source(md_dwh.fct_sls_trn.cmt_cust_id) [filtered by eligible]
+      - prod_id ← source(md_dwh.fct_sls_trn.prod_id) [filtered by qualified]
+      - idn_id ← source(md_dwh.dim_cmt_cust.idn_id)
+      - fclty_id ← source(md_dwh.dim_cmt_cust.fclty_id)
+      - sls_amt ← source(md_dwh.fct_sls_trn.sls_amt)
+      - qty ← source(md_dwh.fct_sls_trn.qty)
+      - sls_dt ← source(md_dwh.fct_sls_trn.sls_dt)
+      - cntrc_id ← ref(int_cntrct_elgbl_cust_ms_toc.cntrc_id)
+      - prc_prg_id ← ref(int_cntrct_elgbl_cust_ms_toc.prc_prg_id)
+      - cmpnt_id ← ref(int_cntrct_qual_prod_ms_toc.cmpnt_id)
+    
+    columns:
+      - name: sls_trn_id
+        description: 'Sales Transaction ID - Primary key'
+      - name: cntrc_id
+        description: 'Contract ID - From eligible customers'
+      - name: prc_prg_id
+        description: 'Pricing Program ID - From eligible customers'
+      - name: cmpnt_id
+        description: 'Component ID - From qualified products'
+      - name: cmt_cust_id
+        description: 'Customer ID - Eligible customer from transaction'
+      - name: prod_id
+        description: 'Product ID - Qualified product from transaction'
+      - name: idn_id
+        description: 'IDN ID - From customer master'
+      - name: fclty_id
+        description: 'Facility ID - From customer master'
+      - name: sls_amt
+        description: 'Sales Amount - Transaction sales amount'
+      - name: qty
+        description: 'Quantity - Units sold'
+      - name: sls_dt
+        description: 'Sales Date - Date of sale'
+
+  - name: int_cntrct_fct_tr_idn_ms_toc
+    description: |
+      **Intermediate Model - Level 1.1.1.1 (Fact Layer)**
+      
+      IDN-level fact table for Market Share TOC.
+      Aggregates sales transactions to IDN level.
+      
+      **Business Logic:**
+      - Groups sales by contract, component, and IDN
+      - Separates qualified sales (matching tiers) from total sales
+      - Aggregates quantity and amount
+      
+      **Column Lineage:**
+      - cntrc_id ← ref(int_cntrct_sls_ms_toc.cntrc_id)
+      - prc_prg_id ← ref(int_cntrct_sls_ms_toc.prc_prg_id)
+      - cmpnt_id ← ref(int_cntrct_sls_ms_toc.cmpnt_id)
+      - idn_id ← source(md_dwh.dim_idn.idn_id) [via join to int_cntrct_sls_ms_toc]
+      - idn_nm ← source(md_dwh.dim_idn.idn_nm)
+      - qual_sls_amt ← SUM(int_cntrct_sls_ms_toc.sls_amt) [where product qualified]
+      - tot_sls_amt ← SUM(all sales.sls_amt) [total including unqualified]
+      - compli_per_strt_dt ← ref(int_cntrct_compli_period_toc.per_strt_dt)
+      - compli_per_end_dt ← ref(int_cntrct_compli_period_toc.per_end_dt)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: idn_id
+        description: 'IDN ID - Primary grouping'
+      - name: idn_nm
+        description: 'IDN Name - From IDN dimension'
+      - name: qual_sls_amt
+        description: 'Qualified Sales Amount - Sum of sales for qualified products'
+      - name: tot_sls_amt
+        description: 'Total Sales Amount - Sum of all sales (qualified + unqualified)'
+      - name: compli_per_strt_dt
+        description: 'Compliance Period Start Date'
+      - name: compli_per_end_dt
+        description: 'Compliance Period End Date'
+
+  - name: int_cntrct_fct_tr_fclty_ms_toc
+    description: |
+      **Intermediate Model - Level 1.1.1.1 (Fact Layer)**
+      
+      Facility-level fact table for Market Share TOC.
+      Aggregates sales transactions to facility level.
+      
+      **Business Logic:**
+      - Groups sales by contract, component, and facility
+      - Separates qualified sales from total sales
+      - Aggregates quantity and amount at facility granularity
+      
+      **Column Lineage:**
+      - cntrc_id ← ref(int_cntrct_sls_ms_toc.cntrc_id)
+      - prc_prg_id ← ref(int_cntrct_sls_ms_toc.prc_prg_id)
+      - cmpnt_id ← ref(int_cntrct_sls_ms_toc.cmpnt_id)
+      - fclty_id ← source(md_dwh.dim_fclty.fclty_id) [via join to int_cntrct_sls_ms_toc]
+      - fclty_nm ← source(md_dwh.dim_fclty.fclty_nm)
+      - qual_sls_amt ← SUM(int_cntrct_sls_ms_toc.sls_amt) [where qualified]
+      - tot_sls_amt ← SUM(all sales.sls_amt)
+      - compli_per_strt_dt ← ref(int_cntrct_compli_period_toc.per_strt_dt)
+      - compli_per_end_dt ← ref(int_cntrct_compli_period_toc.per_end_dt)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: fclty_id
+        description: 'Facility ID - Primary grouping'
+      - name: fclty_nm
+        description: 'Facility Name - From facility dimension'
+      - name: qual_sls_amt
+        description: 'Qualified Sales Amount - Sum at facility level'
+      - name: tot_sls_amt
+        description: 'Total Sales Amount - All sales at facility level'
+      - name: compli_per_strt_dt
+        description: 'Compliance Period Start Date'
+      - name: compli_per_end_dt
+        description: 'Compliance Period End Date'
+
+  - name: int_cntrct_cmplnc_vldtn_idn_ms_toc
+    description: |
+      **Intermediate Model - Level 1.1.1.1.1 (Validation Layer)**
+      
+      IDN market share % validation for Market Share TOC.
+      Calculates market share percentage at IDN level.
+      
+      **Business Logic:**
+      - Calculates: market_share_pct = (qualified_sales / total_sales) * 100
+      - Used to determine tier assignment
+      - Base for tier ranking model
+      
+      **Column Lineage:**
+      - cntrc_id ← ref(int_cntrct_fct_tr_idn_ms_toc.cntrc_id)
+      - prc_prg_id ← ref(int_cntrct_fct_tr_idn_ms_toc.prc_prg_id)
+      - cmpnt_id ← ref(int_cntrct_fct_tr_idn_ms_toc.cmpnt_id)
+      - idn_id ← ref(int_cntrct_fct_tr_idn_ms_toc.idn_id)
+      - idn_nm ← ref(int_cntrct_fct_tr_idn_ms_toc.idn_nm)
+      - ms_pct ← CALCULATION: (int_cntrct_fct_tr_idn_ms_toc.qual_sls_amt / int_cntrct_fct_tr_idn_ms_toc.tot_sls_amt) * 100
+      - qual_sls_amt ← ref(int_cntrct_fct_tr_idn_ms_toc.qual_sls_amt)
+      - tot_sls_amt ← ref(int_cntrct_fct_tr_idn_ms_toc.tot_sls_amt)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: idn_id
+        description: 'IDN ID'
+      - name: idn_nm
+        description: 'IDN Name'
+      - name: ms_pct
+        description: 'Market Share % - Calculated as (qualified_sales / total_sales) * 100'
+      - name: qual_sls_amt
+        description: 'Qualified Sales Amount'
+      - name: tot_sls_amt
+        description: 'Total Sales Amount'
+
+  - name: int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc
+    description: |
+      **Intermediate Model - Level 1.1.1.1.1 (Validation Layer)**
+      
+      IDN tier assignment and rebate calculation for Market Share TOC.
+      Assigns tiers based on market share % and calculates rebates.
+      
+      **Business Logic:**
+      - Joins with tier definitions using market share %
+      - Assigns tier_num based on tier ranges
+      - Calculates rebate_amt = qualified_sales * (rebate_pct / 100)
+      
+      **Column Lineage:**
+      - cntrc_id ← ref(int_cntrct_cmplnc_vldtn_idn_ms_toc.cntrc_id)
+      - prc_prg_id ← ref(int_cntrct_cmplnc_vldtn_idn_ms_toc.prc_prg_id)
+      - cmpnt_id ← ref(int_cntrct_cmplnc_vldtn_idn_ms_toc.cmpnt_id)
+      - idn_id ← ref(int_cntrct_cmplnc_vldtn_idn_ms_toc.idn_id)
+      - idn_nm ← ref(int_cntrct_cmplnc_vldtn_idn_ms_toc.idn_nm)
+      - ms_pct ← ref(int_cntrct_cmplnc_vldtn_idn_ms_toc.ms_pct)
+      - tier_num ← ref(int_cntrct_tier_components_ms.tier_num) [via join on ms_pct between min/max]
+      - tier_min_pct ← ref(int_cntrct_tier_components_ms.tier_min_pct)
+      - tier_max_pct ← ref(int_cntrct_tier_components_ms.tier_max_pct)
+      - rebate_pct ← ref(int_cntrct_tier_components_ms.rebate_pct)
+      - qual_sls_amt ← ref(int_cntrct_cmplnc_vldtn_idn_ms_toc.qual_sls_amt)
+      - rebate_amt ← CALCULATION: qual_sls_amt * (rebate_pct / 100)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: idn_id
+        description: 'IDN ID'
+      - name: idn_nm
+        description: 'IDN Name'
+      - name: ms_pct
+        description: 'Market Share %'
+      - name: tier_num
+        description: 'Assigned Tier Number - Based on ms_pct falling within tier ranges'
+      - name: tier_min_pct
+        description: 'Tier Minimum % - Lower boundary of assigned tier'
+      - name: tier_max_pct
+        description: 'Tier Maximum % - Upper boundary of assigned tier'
+      - name: rebate_pct
+        description: 'Rebate % - Rate for assigned tier'
+      - name: qual_sls_amt
+        description: 'Qualified Sales Amount'
+      - name: rebate_amt
+        description: 'Rebate Amount - Calculated as qual_sls_amt * (rebate_pct / 100)'
+
+  - name: int_cntrct_cmplnc_vldtn_fclty_ms_toc
+    description: |
+      **Intermediate Model - Level 1.1.1.1.1 (Validation Layer)**
+      
+      Facility market share % validation for Market Share TOC.
+      Calculates market share percentage at facility level.
+      
+      **Business Logic:**
+      - Calculates: market_share_pct = (qualified_sales / total_sales) * 100
+      - Used for facility-level tier assignment
+      - Base for facility tier ranking model
+      
+      **Column Lineage:**
+      - cntrc_id ← ref(int_cntrct_fct_tr_fclty_ms_toc.cntrc_id)
+      - prc_prg_id ← ref(int_cntrct_fct_tr_fclty_ms_toc.prc_prg_id)
+      - cmpnt_id ← ref(int_cntrct_fct_tr_fclty_ms_toc.cmpnt_id)
+      - fclty_id ← ref(int_cntrct_fct_tr_fclty_ms_toc.fclty_id)
+      - fclty_nm ← ref(int_cntrct_fct_tr_fclty_ms_toc.fclty_nm)
+      - ms_pct ← CALCULATION: (int_cntrct_fct_tr_fclty_ms_toc.qual_sls_amt / int_cntrct_fct_tr_fclty_ms_toc.tot_sls_amt) * 100
+      - qual_sls_amt ← ref(int_cntrct_fct_tr_fclty_ms_toc.qual_sls_amt)
+      - tot_sls_amt ← ref(int_cntrct_fct_tr_fclty_ms_toc.tot_sls_amt)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: fclty_id
+        description: 'Facility ID'
+      - name: fclty_nm
+        description: 'Facility Name'
+      - name: ms_pct
+        description: 'Market Share % - Calculated at facility level'
+      - name: qual_sls_amt
+        description: 'Qualified Sales Amount'
+      - name: tot_sls_amt
+        description: 'Total Sales Amount'
+
+  - name: int_cntrct_cmplnc_vldtn_fclty_rnkd_ms_toc
+    description: |
+      **Intermediate Model - Level 1.1.1.1.1 (Validation Layer)**
+      
+      Facility tier assignment and rebate calculation for Market Share TOC.
+      Assigns tiers based on facility market share % and calculates rebates.
+      
+      **Business Logic:**
+      - Joins with tier definitions using market share %
+      - Assigns tier_num based on tier ranges
+      - Calculates rebate_amt = qualified_sales * (rebate_pct / 100)
+      
+      **Column Lineage:**
+      - cntrc_id ← ref(int_cntrct_cmplnc_vldtn_fclty_ms_toc.cntrc_id)
+      - prc_prg_id ← ref(int_cntrct_cmplnc_vldtn_fclty_ms_toc.prc_prg_id)
+      - cmpnt_id ← ref(int_cntrct_cmplnc_vldtn_fclty_ms_toc.cmpnt_id)
+      - fclty_id ← ref(int_cntrct_cmplnc_vldtn_fclty_ms_toc.fclty_id)
+      - fclty_nm ← ref(int_cntrct_cmplnc_vldtn_fclty_ms_toc.fclty_nm)
+      - ms_pct ← ref(int_cntrct_cmplnc_vldtn_fclty_ms_toc.ms_pct)
+      - tier_num ← ref(int_cntrct_tier_components_ms.tier_num) [via join on ms_pct between min/max]
+      - tier_min_pct ← ref(int_cntrct_tier_components_ms.tier_min_pct)
+      - tier_max_pct ← ref(int_cntrct_tier_components_ms.tier_max_pct)
+      - rebate_pct ← ref(int_cntrct_tier_components_ms.rebate_pct)
+      - qual_sls_amt ← ref(int_cntrct_cmplnc_vldtn_fclty_ms_toc.qual_sls_amt)
+      - rebate_amt ← CALCULATION: qual_sls_amt * (rebate_pct / 100)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: fclty_id
+        description: 'Facility ID'
+      - name: fclty_nm
+        description: 'Facility Name'
+      - name: ms_pct
+        description: 'Market Share %'
+      - name: tier_num
+        description: 'Assigned Tier Number - Based on facility ms_pct'
+      - name: tier_min_pct
+        description: 'Tier Minimum % - Lower boundary of assigned tier'
+      - name: tier_max_pct
+        description: 'Tier Maximum % - Upper boundary of assigned tier'
+      - name: rebate_pct
+        description: 'Rebate % - Rate for assigned tier'
+      - name: qual_sls_amt
+        description: 'Qualified Sales Amount'
+      - name: rebate_amt
+        description: 'Rebate Amount - Calculated as qual_sls_amt * (rebate_pct / 100)'
+
+  - name: int_cntrct_cmprhnsv_fct_tr_ms_toc
+    description: |
+      **Intermediate Model - Level 1.1.1.1.1.1 (Comprehensive Fact Layer)**
+      
+      Comprehensive fact table combining all metrics for Market Share TOC.
+      Union of IDN and facility validation results with combined rebate calculations.
+      
+      **Business Logic:**
+      - Combines IDN-level and facility-level compliance metrics
+      - Maintains hierarchy for multi-level analysis
+      - Serves as single source for reporting
+      
+      **Column Lineage:**
+      - cntrc_id ← ref(int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc.cntrc_id) [via UNION]
+      - prc_prg_id ← ref(int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc.prc_prg_id)
+      - cmpnt_id ← ref(int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc.cmpnt_id)
+      - cmpnt_nm ← ref(int_cntrct_tier_components_ms.cmpnt_nm) [via join]
+      - cmt_cust_id ← NULL [not in idn/facility aggregations]
+      - idn_id ← ref(int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc.idn_id)
+      - idn_nm ← ref(int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc.idn_nm)
+      - fclty_id ← ref(int_cntrct_cmplnc_vldtn_fclty_rnkd_ms_toc.fclty_id)
+      - fclty_nm ← ref(int_cntrct_cmplnc_vldtn_fclty_rnkd_ms_toc.fclty_nm)
+      - qual_sls_amt ← ref(int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc.qual_sls_amt) OR ref(int_cntrct_cmplnc_vldtn_fclty_rnkd_ms_toc.qual_sls_amt)
+      - tot_sls_amt ← ref(int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc.tot_sls_amt) OR ref(int_cntrct_cmplnc_vldtn_fclty_rnkd_ms_toc.tot_sls_amt)
+      - overall_ms_pct ← CALCULATION: (qual_sls_amt / tot_sls_amt) * 100
+      - idn_ms_pct ← ref(int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc.ms_pct) [or NULL if facility source]
+      - fclty_ms_pct ← ref(int_cntrct_cmplnc_vldtn_fclty_rnkd_ms_toc.ms_pct) [or NULL if idn source]
+      - idn_tier ← ref(int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc.tier_num)
+      - fclty_tier ← ref(int_cntrct_cmplnc_vldtn_fclty_rnkd_ms_toc.tier_num)
+      - idn_rebate ← ref(int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc.rebate_amt)
+      - fclty_rebate ← ref(int_cntrct_cmplnc_vldtn_fclty_rnkd_ms_toc.rebate_amt)
+      - tot_rebate ← CALCULATION: idn_rebate + fclty_rebate
+      - compli_per_strt_dt ← ref(int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc.compli_per_strt_dt)
+      - compli_per_end_dt ← ref(int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc.compli_per_end_dt)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: cmpnt_nm
+        description: 'Component Name'
+      - name: cmt_cust_id
+        description: 'Customer ID - Null in aggregated view'
+      - name: idn_id
+        description: 'IDN ID - From IDN validation'
+      - name: idn_nm
+        description: 'IDN Name'
+      - name: fclty_id
+        description: 'Facility ID - From facility validation'
+      - name: fclty_nm
+        description: 'Facility Name'
+      - name: qual_sls_amt
+        description: 'Qualified Sales Amount - From IDN or facility level'
+      - name: tot_sls_amt
+        description: 'Total Sales Amount - From IDN or facility level'
+      - name: overall_ms_pct
+        description: 'Overall Market Share % - Comprehensive metric'
+      - name: idn_ms_pct
+        description: 'IDN Market Share % - IDN-level metric'
+      - name: fclty_ms_pct
+        description: 'Facility Market Share % - Facility-level metric'
+      - name: idn_tier
+        description: 'IDN Tier Number - Assigned tier at IDN level'
+      - name: fclty_tier
+        description: 'Facility Tier Number - Assigned tier at facility level'
+      - name: idn_rebate
+        description: 'IDN Rebate Amount - Calculated at IDN level'
+      - name: fclty_rebate
+        description: 'Facility Rebate Amount - Calculated at facility level'
+      - name: tot_rebate
+        description: 'Total Rebate Amount - Sum of IDN + facility rebates'
+      - name: compli_per_strt_dt
+        description: 'Compliance Period Start Date'
+      - name: compli_per_end_dt
+        description: 'Compliance Period End Date'
+
+      - name: cntrc_id
+        description: 'Contract ID'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmpnt_id
+        description: 'Contract Component ID'
+      - name: fclty_id
+        description: 'Facility ID'
+      - name: fclty_nm
+        description: 'Facility Name'
+      - name: idn_id
+        description: 'IDN ID'
+      - name: qual_sls_amt
+        description: 'Qualified Sales Amount'
+      - name: tot_sls_amt
+        description: 'Total Sales Amount'
+      - name: compli_per_strt_dt
+        description: 'Compliance Period Start Date'
+      - name: compli_per_end_dt
+        description: 'Compliance Period End Date'

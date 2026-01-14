@@ -1,1 +1,0 @@
-{{ dbt_utils.test_unique_combination_of_columns(combination_of_columns=["cntrc_id","prc_prg_id","cmpnt_id"], model=get_where_subquery(ref('mart_cntrct_ms_toc'))) }}

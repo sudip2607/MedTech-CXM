@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Column Lineage Dashboard</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .control-group input,
+        .control-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-family: inherit;
+        }
+        
+        .control-group input:focus,
+        .control-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button.secondary {
+            background: #6c757d;
+        }
+        
+        button.secondary:hover {
+            background: #5a6268;
+        }
+        
+        .main-content {
+            display: flex;
+            height: 800px;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #e0e0e0;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+        
+        .sidebar-section h3 {
+            font-size: 0.95em;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .model-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .model-item {
+            padding: 10px 12px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .model-item:hover {
+            background: #e8f0ff;
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+        
+        .model-item.active {
+            background: #667eea;
+            color: white;
+            border-left-color: #764ba2;
+        }
+        
+        .model-item.source {
+            border-left-color: #28a745;
+        }
+        
+        .model-item.mart {
+            border-left-color: #ffc107;
+        }
+        
+        .canvas-area {
+            flex: 1;
+            background: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            pointer-events: none;
+            z-index: 1000;
+            max-width: 300px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 350px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            z-index: 500;
+            display: none;
+        }
+        
+        .info-panel.active {
+            display: block;
+        }
+        
+        .info-panel h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+        
+        .info-panel p {
+            font-size: 0.85em;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        
+        .column-badge {
+            display: inline-block;
+            background: #e8f0ff;
+            color: #667eea;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin: 2px 2px 2px 0;
+        }
+        
+        .legend {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 0.85em;
+            z-index: 500;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+        
+        .node-source { background: #28a745; }
+        .node-base { background: #17a2b8; }
+        .node-input { background: #6610f2; }
+        .node-fact { background: #fd7e14; }
+        .node-validation { background: #e83e8c; }
+        .node-comprehensive { background: #dc3545; }
+        .node-mart { background: #ffc107; }
+        
+        footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 0.85em;
+            color: #666;
+            text-align: center;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 0.85em;
+            color: #999;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Column Lineage Dashboard</h1>
+            <p>Interactive visualization of column transformations through your dbt models</p>
+        </header>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="modelSelect">Select Model:</label>
+                <select id="modelSelect">
+                    <option value="">-- Choose a model --</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="columnSearch">Search Column:</label>
+                <input type="text" id="columnSearch" placeholder="e.g., sls_amt, cntrc_id...">
+            </div>
+            
+            <div class="control-group">
+                <label for="layerFilter">Filter by Layer:</label>
+                <select id="layerFilter">
+                    <option value="">All Layers</option>
+                    <option value="source">Sources</option>
+                    <option value="base">Base Models</option>
+                    <option value="input">Input/Eligibility</option>
+                    <option value="fact">Fact Tables</option>
+                    <option value="validation">Validation</option>
+                    <option value="comprehensive">Comprehensive</option>
+                    <option value="mart">Marts</option>
+                </select>
+            </div>
+            
+            <div class="button-group">
+                <button onclick="resetVisualization()">Reset View</button>
+                <button class="secondary" onclick="toggleLegend()">Toggle Legend</button>
+                <button class="secondary" onclick="downloadSVG()">Export SVG</button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3>📊 Models by Layer</h3>
+                    <div id="modelsByLayer" class="model-list"></div>
+                </div>
+            </div>
+            
+            <div class="canvas-area">
+                <svg id="canvas"></svg>
+                <div id="legend" class="legend">
+                    <div style="font-weight: 700; margin-bottom: 10px; color: #333;">Node Types</div>
+                    <div class="legend-item">
+                        <div class="legend-color node-source"></div>
+                        <span>Source Tables</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color node-base"></div>
+                        <span>Base Models</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color node-input"></div>
+                        <span>Input/Eligibility</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color node-fact"></div>
+                        <span>Fact Tables</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color node-validation"></div>
+                        <span>Validation</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color node-comprehensive"></div>
+                        <span>Comprehensive</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color node-mart"></div>
+                        <span>Marts</span>
+                    </div>
+                </div>
+                <div id="infoPanel" class="info-panel"></div>
+            </div>
+        </div>
+        
+        <footer>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="modelCount">0</div>
+                    <div class="stat-label">Models</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="columnCount">0</div>
+                    <div class="stat-label">Columns</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="connectionCount">0</div>
+                    <div class="stat-label">Connections</div>
+                </div>
+            </div>
+            <p>💡 Click on a model to see its columns. Use search to trace column lineage across the pipeline.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Column Lineage Data
+        const lineageData = {
+            sources: [
+                { id: 'dim_cntrc', name: 'dim_cntrc', layer: 'source', columns: ['cntrc_id', 'cntrc_nm', 'cntrc_sts', 'prc_prg_id', 'cntrc_strt_dt', 'cntrc_end_dt'] },
+                { id: 'dim_prc_prg_cmpnt', name: 'dim_prc_prg_cmpnt', layer: 'source', columns: ['prc_prg_id', 'cmpnt_id', 'cmpnt_nm', 'tier_basis_type', 'tier_num', 'tier_min_pct', 'tier_max_pct', 'rebate_pct'] },
+                { id: 'dim_prc_prg_cmpli_per_rslts', name: 'dim_prc_prg_cmpli_per_rslts', layer: 'source', columns: ['cntrc_id', 'prc_prg_id', 'cmpnt_id', 'per_strt_dt', 'per_end_dt', 'per_num', 'rnk_val'] },
+                { id: 'dim_prc_cmpnt_cust_elig', name: 'dim_prc_cmpnt_cust_elig', layer: 'source', columns: ['cmpnt_id', 'cmt_cust_id', 'elig_st_dt', 'elig_end_dt'] },
+                { id: 'dim_prc_cmpnt_qual_prod', name: 'dim_prc_cmpnt_qual_prod', layer: 'source', columns: ['cmpnt_id', 'prod_id', 'qual_st_dt', 'qual_end_dt'] },
+                { id: 'fct_sls_trn', name: 'fct_sls_trn', layer: 'source', columns: ['sls_trn_id', 'cmt_cust_id', 'prod_id', 'sls_amt', 'qty', 'sls_dt', 'idn_id', 'fclty_id'] },
+                { id: 'dim_cmt_cust', name: 'dim_cmt_cust', layer: 'source', columns: ['cmt_cust_id', 'idn_id', 'idn_nm', 'fclty_id', 'fclty_nm'] },
+            ],
+            base: [
+                { id: 'int_cntrct_rcnt_period', name: 'int_cntrct_rcnt_period', layer: 'base', columns: ['cntrc_id', 'cntrc_nm', 'cntrc_sts'], parents: ['dim_cntrc'] },
+                { id: 'int_cntrct_tier_components_ms', name: 'int_cntrct_tier_components_ms', layer: 'base', columns: ['cntrc_id', 'prc_prg_id', 'cmpnt_id', 'tier_num', 'rebate_pct'], parents: ['dim_prc_prg_cmpnt', 'int_cntrct_rcnt_period'] },
+                { id: 'int_cntrct_compli_period_toc', name: 'int_cntrct_compli_period_toc', layer: 'base', columns: ['cntrc_id', 'per_strt_dt', 'per_end_dt', 'rnk_val'], parents: ['dim_prc_prg_cmpli_per_rslts', 'int_cntrct_rcnt_period'] },
+            ],
+            input: [
+                { id: 'int_cntrct_elgbl_cust_ms_toc', name: 'int_cntrct_elgbl_cust_ms_toc', layer: 'input', columns: ['cntrc_id', 'cmt_cust_id', 'elig_st_dt', 'elig_end_dt'], parents: ['dim_prc_cmpnt_cust_elig', 'int_cntrct_tier_components_ms'] },
+                { id: 'int_cntrct_qual_prod_ms_toc', name: 'int_cntrct_qual_prod_ms_toc', layer: 'input', columns: ['cntrc_id', 'prod_id', 'qual_st_dt', 'qual_end_dt'], parents: ['dim_prc_cmpnt_qual_prod', 'int_cntrct_tier_components_ms'] },
+                { id: 'int_cntrct_sls_ms_toc', name: 'int_cntrct_sls_ms_toc', layer: 'input', columns: ['sls_trn_id', 'cmt_cust_id', 'prod_id', 'sls_amt', 'idn_id', 'fclty_id'], parents: ['fct_sls_trn', 'int_cntrct_elgbl_cust_ms_toc', 'int_cntrct_qual_prod_ms_toc', 'dim_cmt_cust'] },
+            ],
+            fact: [
+                { id: 'int_cntrct_fct_tr_idn_ms_toc', name: 'int_cntrct_fct_tr_idn_ms_toc', layer: 'fact', columns: ['cntrc_id', 'idn_id', 'idn_nm', 'qual_sls_amt', 'tot_sls_amt'], parents: ['int_cntrct_sls_ms_toc', 'int_cntrct_compli_period_toc'] },
+                { id: 'int_cntrct_fct_tr_fclty_ms_toc', name: 'int_cntrct_fct_tr_fclty_ms_toc', layer: 'fact', columns: ['cntrc_id', 'fclty_id', 'fclty_nm', 'qual_sls_amt', 'tot_sls_amt'], parents: ['int_cntrct_sls_ms_toc', 'int_cntrct_compli_period_toc'] },
+            ],
+            validation: [
+                { id: 'int_cntrct_cmplnc_vldtn_idn_ms_toc', name: 'int_cntrct_cmplnc_vldtn_idn_ms_toc', layer: 'validation', columns: ['cntrc_id', 'idn_id', 'ms_pct', 'qual_sls_amt'], parents: ['int_cntrct_fct_tr_idn_ms_toc'] },
+                { id: 'int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc', name: 'int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc', layer: 'validation', columns: ['cntrc_id', 'idn_id', 'ms_pct', 'tier_num', 'rebate_amt'], parents: ['int_cntrct_cmplnc_vldtn_idn_ms_toc', 'int_cntrct_tier_components_ms'] },
+            ],
+            comprehensive: [
+                { id: 'int_cntrct_cmprhnsv_fct_tr_ms_toc', name: 'int_cntrct_cmprhnsv_fct_tr_ms_toc', layer: 'comprehensive', columns: ['cntrc_id', 'idn_id', 'fclty_id', 'qual_sls_amt', 'tot_rebate', 'overall_ms_pct'], parents: ['int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc', 'int_cntrct_cmplnc_vldtn_fclty_rnkd_ms_toc'] },
+            ],
+            mart: [
+                { id: 'mart_cntrct_ms_toc', name: 'mart_cntrct_ms_toc', layer: 'mart', columns: ['cntrc_id', 'idn_id', 'fclty_id', 'qual_sls_amt', 'overall_ms_pct', 'rebate_amt'], parents: ['int_cntrct_cmprhnsv_fct_tr_ms_toc'] },
+            ]
+        };
+
+        // Flatten all models
+        const allModels = [
+            ...lineageData.sources,
+            ...lineageData.base,
+            ...lineageData.input,
+            ...lineageData.fact,
+            ...lineageData.validation,
+            ...lineageData.comprehensive,
+            ...lineageData.mart
+        ];
+
+        // Initialize
+        let currentSelection = null;
+        let nodePositions = {};
+        const svg = d3.select('#canvas');
+        const width = document.querySelector('.canvas-area').clientWidth;
+        const height = document.querySelector('.canvas-area').clientHeight;
+
+        // Populate model select
+        function populateControls() {
+            const modelSelect = document.getElementById('modelSelect');
+            allModels.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = `[${model.layer.toUpperCase()}] ${model.name}`;
+                modelSelect.appendChild(option);
+            });
+
+            populateLayerSidebar();
+            updateStats();
+        }
+
+        function populateLayerSidebar() {
+            const container = document.getElementById('modelsByLayer');
+            container.innerHTML = '';
+            
+            Object.keys(lineageData).forEach(layer => {
+                const models = lineageData[layer];
+                const section = document.createElement('div');
+                section.className = 'sidebar-section';
+                
+                let html = `<h3>${layer.toUpperCase()}</h3><div class="model-list">`;
+                models.forEach(model => {
+                    html += `<div class="model-item ${layer}" onclick="selectModel('${model.id}')">${model.name}</div>`;
+                });
+                html += '</div>';
+                
+                section.innerHTML = html;
+                container.appendChild(section);
+            });
+        }
+
+        function selectModel(modelId) {
+            currentSelection = modelId;
+            document.querySelectorAll('.model-item').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll(`[onclick*="'${modelId}'"]`).forEach(el => el.classList.add('active'));
+            
+            const model = allModels.find(m => m.id === modelId);
+            renderVisualization(model);
+            showInfo(model);
+        }
+
+        function renderVisualization(selectedModel) {
+            svg.selectAll('*').remove();
+
+            // Create container with zoom
+            const g = svg.append('g');
+
+            // Calculate layout - hierarchical by layer
+            const layerOrder = ['source', 'base', 'input', 'fact', 'validation', 'comprehensive', 'mart'];
+            const layerPositions = {};
+            let yOffset = 50;
+
+            layerOrder.forEach((layer, idx) => {
+                const models = allModels.filter(m => m.layer === layer);
+                layerPositions[layer] = {
+                    x: 100 + (idx * (width - 200) / 7),
+                    y: 100,
+                    models: models
+                };
+            });
+
+            // Draw nodes
+            const nodes = [];
+            const links = [];
+
+            function getNodeColor(layer) {
+                const colors = {
+                    'source': '#28a745',
+                    'base': '#17a2b8',
+                    'input': '#6610f2',
+                    'fact': '#fd7e14',
+                    'validation': '#e83e8c',
+                    'comprehensive': '#dc3545',
+                    'mart': '#ffc107'
+                };
+                return colors[layer] || '#6c757d';
+            }
+
+            // Highlight path if model selected
+            const selectedModel = allModels.find(m => m.id === currentSelection);
+            const highlightedModels = new Set();
+
+            if (selectedModel) {
+                // Add selected
+                highlightedModels.add(selectedModel.id);
+                
+                // Add parents (upstream)
+                function addParents(model) {
+                    if (model.parents) {
+                        model.parents.forEach(parentId => {
+                            highlightedModels.add(parentId);
+                            const parent = allModels.find(m => m.id === parentId);
+                            if (parent) addParents(parent);
+                        });
+                    }
+                }
+                addParents(selectedModel);
+            }
+
+            // Position nodes
+            const nodeLayout = {};
+            Object.keys(layerPositions).forEach(layer => {
+                const models = allModels.filter(m => m.layer === layer);
+                models.forEach((model, idx) => {
+                    nodeLayout[model.id] = {
+                        x: 100 + (layerOrder.indexOf(layer) * (width - 200) / 7),
+                        y: 100 + (idx * (height - 200) / Math.max(...Object.values(layerPositions).map(p => p.models.length))),
+                        layer: layer
+                    };
+                });
+            });
+
+            // Draw links first
+            allModels.forEach(model => {
+                if (model.parents) {
+                    model.parents.forEach(parentId => {
+                        const parent = allModels.find(m => m.id === parentId);
+                        if (parent && nodeLayout[parentId] && nodeLayout[model.id]) {
+                            const isHighlighted = currentSelection && (highlightedModels.has(model.id) || highlightedModels.has(parentId));
+                            
+                            g.append('line')
+                                .attr('x1', nodeLayout[parentId].x)
+                                .attr('y1', nodeLayout[parentId].y)
+                                .attr('x2', nodeLayout[model.id].x)
+                                .attr('y2', nodeLayout[model.id].y)
+                                .attr('stroke', isHighlighted ? '#667eea' : '#ccc')
+                                .attr('stroke-width', isHighlighted ? 2 : 1)
+                                .attr('stroke-dasharray', isHighlighted ? 'none' : '5,5')
+                                .attr('opacity', isHighlighted ? 1 : 0.3);
+                        }
+                    });
+                }
+            });
+
+            // Draw nodes
+            allModels.forEach(model => {
+                const pos = nodeLayout[model.id];
+                if (!pos) return;
+
+                const isHighlighted = !currentSelection || highlightedModels.has(model.id);
+                const radius = model.id === currentSelection ? 35 : 25;
+                const opacity = isHighlighted ? 1 : 0.3;
+
+                const nodeGroup = g.append('g')
+                    .attr('class', 'node')
+                    .attr('transform', `translate(${pos.x}, ${pos.y})`);
+
+                // Circle
+                nodeGroup.append('circle')
+                    .attr('r', radius)
+                    .attr('fill', getNodeColor(model.layer))
+                    .attr('opacity', opacity)
+                    .attr('cursor', 'pointer')
+                    .on('click', () => selectModel(model.id))
+                    .on('mouseover', function() {
+                        d3.select(this).attr('r', radius + 5);
+                        showTooltip(model);
+                    })
+                    .on('mouseout', function() {
+                        d3.select(this).attr('r', radius);
+                        hideTooltip();
+                    });
+
+                // Label
+                nodeGroup.append('text')
+                    .attr('text-anchor', 'middle')
+                    .attr('dy', '0.3em')
+                    .attr('font-size', '11px')
+                    .attr('font-weight', 'bold')
+                    .attr('fill', 'white')
+                    .attr('pointer-events', 'none')
+                    .text(model.name.split('_').pop().substring(0, 6))
+                    .attr('opacity', opacity);
+            });
+
+            // Add zoom
+            const zoom = d3.zoom()
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+
+            svg.call(zoom);
+        }
+
+        function showInfo(model) {
+            const panel = document.getElementById('infoPanel');
+            let html = `<h4>${model.name}</h4>`;
+            html += `<p><strong>Layer:</strong> ${model.layer.toUpperCase()}</p>`;
+            
+            if (model.columns && model.columns.length > 0) {
+                html += `<p><strong>Columns (${model.columns.length}):</strong></p>`;
+                model.columns.forEach(col => {
+                    html += `<div class="column-badge">${col}</div>`;
+                });
+            }
+            
+            if (model.parents && model.parents.length > 0) {
+                html += `<p><strong>Parents:</strong> ${model.parents.map(p => {
+                    const parent = allModels.find(m => m.id === p);
+                    return parent ? parent.name : p;
+                }).join(', ')}</p>`;
+            }
+            
+            panel.innerHTML = html;
+            panel.classList.add('active');
+        }
+
+        function showTooltip(model) {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tooltip';
+            tooltip.textContent = `${model.name} (${model.columns?.length || 0} cols)`;
+            document.body.appendChild(tooltip);
+
+            const event = d3.event;
+            if (event && event.pageX) {
+                tooltip.style.left = (event.pageX + 10) + 'px';
+                tooltip.style.top = (event.pageY + 10) + 'px';
+            }
+
+            setTimeout(() => tooltip.remove(), 3000);
+        }
+
+        function hideTooltip() {
+            document.querySelectorAll('.tooltip').forEach(t => t.remove());
+        }
+
+        function resetVisualization() {
+            currentSelection = null;
+            document.querySelectorAll('.model-item').forEach(el => el.classList.remove('active'));
+            renderVisualization(null);
+            document.getElementById('infoPanel').classList.remove('active');
+            svg.transition()
+                .duration(750)
+                .call(d3.zoom().transform, d3.zoomIdentity.translate(0, 0));
+        }
+
+        function toggleLegend() {
+            const legend = document.getElementById('legend');
+            legend.style.display = legend.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function downloadSVG() {
+            const svgData = new XMLSerializer().serializeToString(document.getElementById('canvas'));
+            const blob = new Blob([svgData], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'column-lineage.svg';
+            link.click();
+        }
+
+        function updateStats() {
+            let totalColumns = 0;
+            let totalConnections = 0;
+
+            allModels.forEach(model => {
+                if (model.columns) totalColumns += model.columns.length;
+                if (model.parents) totalConnections += model.parents.length;
+            });
+
+            document.getElementById('modelCount').textContent = allModels.length;
+            document.getElementById('columnCount').textContent = totalColumns;
+            document.getElementById('connectionCount').textContent = totalConnections;
+        }
+
+        // Event listeners
+        document.getElementById('modelSelect').addEventListener('change', (e) => {
+            if (e.target.value) selectModel(e.target.value);
+        });
+
+        // Initial render
+        populateControls();
+        renderVisualization(null);
+    </script>
+</body>
+</html>

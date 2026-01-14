@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Column Lineage - MS TOC Workflow</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+    <style>
+        * { margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f0f2f5; }
+        .header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 30px; text-align: center; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .container { max-width: 1400px; margin: 20px auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .controls { padding: 20px; border-bottom: 1px solid #ddd; display: flex; gap: 15px; flex-wrap: wrap; background: #f8f9fa; }
+        .control { display: flex; flex-direction: column; gap: 5px; }
+        .control label { font-weight: bold; font-size: 0.9em; color: #333; }
+        .control input, .control select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9em; }
+        .network-container { position: relative; height: 700px; background: white; }
+        #network { width: 100%; height: 100%; }
+        .legend { position: absolute; bottom: 20px; right: 20px; background: white; padding: 15px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 0.85em; z-index: 10; max-width: 250px; }
+        .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .legend-box { width: 20px; height: 20px; border-radius: 3px; }
+        .info { position: absolute; top: 20px; left: 20px; background: white; padding: 15px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 300px; z-index: 10; display: none; }
+        .info.active { display: block; }
+        .info h3 { color: #667eea; margin-bottom: 10px; }
+        .info p { font-size: 0.9em; color: #666; margin-bottom: 5px; }
+        .columns { font-size: 0.85em; margin-top: 10px; }
+        .col-badge { display: inline-block; background: #e8f0ff; color: #667eea; padding: 3px 8px; border-radius: 3px; margin: 2px; }
+        footer { padding: 20px; border-top: 1px solid #ddd; background: #f8f9fa; text-align: center; font-size: 0.9em; color: #666; }
+        button { padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #5568d3; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Column Lineage Dashboard</h1>
+        <p>Interactive visualization of column transformations through MS TOC workflow</p>
+    </div>
+    
+    <div class="container">
+        <div class="controls">
+            <div class="control">
+                <label>Select Model:</label>
+                <select id="modelSelect" onchange="selectModel(this.value)">
+                    <option value="">-- All Models --</option>
+                </select>
+            </div>
+            <div class="control">
+                <label>Search Column:</label>
+                <input type="text" id="columnSearch" placeholder="e.g., sls_amt, rebate_amt" onkeyup="searchColumn(this.value)">
+            </div>
+            <button onclick="resetView()">Reset View</button>
+            <button onclick="downloadGraph()">Download SVG</button>
+        </div>
+        
+        <div class="network-container">
+            <div id="network"></div>
+            <div id="info" class="info"></div>
+            <div class="legend">
+                <strong>Layer Colors</strong>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #28a745;"></div>
+                    <span>Sources</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #17a2b8;"></div>
+                    <span>Base</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #6610f2;"></div>
+                    <span>Input</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #fd7e14;"></div>
+                    <span>Fact</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #e83e8c;"></div>
+                    <span>Validation</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #dc3545;"></div>
+                    <span>Comprehensive</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #ffc107;"></div>
+                    <span>Mart</span>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>💡 Click on a node to see details. Drag to move. Scroll to zoom. All lineage sourced from dbt model metadata.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Model Lineage Data
+        const models = [
+            // SOURCES
+            { id: 'src_dim_cntrc', label: 'dim_cntrc', group: 'source', title: 'Contract Dimension', columns: ['cntrc_id', 'cntrc_nm', 'cntrc_sts', 'prc_prg_id'] },
+            { id: 'src_dim_prc_prg_cmpnt', label: 'dim_prc_prg_cmpnt', group: 'source', title: 'Component/Tier Definition', columns: ['prc_prg_id', 'cmpnt_id', 'tier_basis_type', 'tier_num', 'tier_min_pct', 'tier_max_pct', 'rebate_pct'] },
+            { id: 'src_dim_prc_prg_cmpli', label: 'dim_prc_prg_cmpli_per_rslts', group: 'source', title: 'Compliance Period', columns: ['cntrc_id', 'prc_prg_id', 'per_strt_dt', 'per_end_dt', 'rnk_val'] },
+            { id: 'src_dim_prc_cmpnt_cust_elig', label: 'dim_prc_cmpnt_cust_elig', group: 'source', title: 'Customer Eligibility', columns: ['cmpnt_id', 'cmt_cust_id', 'elig_st_dt', 'elig_end_dt'] },
+            { id: 'src_dim_prc_cmpnt_qual_prod', label: 'dim_prc_cmpnt_qual_prod', group: 'source', title: 'Qualified Products', columns: ['cmpnt_id', 'prod_id', 'qual_st_dt', 'qual_end_dt'] },
+            { id: 'src_fct_sls_trn', label: 'fct_sls_trn', group: 'source', title: 'Sales Transactions', columns: ['sls_trn_id', 'cmt_cust_id', 'prod_id', 'sls_amt', 'qty', 'idn_id', 'fclty_id'] },
+            { id: 'src_dim_cmt_cust', label: 'dim_cmt_cust', group: 'source', title: 'Customer Master', columns: ['cmt_cust_id', 'idn_id', 'idn_nm', 'fclty_id', 'fclty_nm'] },
+            
+            // BASE MODELS
+            { id: 'base_rcnt_period', label: 'int_cntrct_rcnt_period', group: 'base', title: 'Recent Contracts (24mo)', columns: ['cntrc_id', 'cntrc_nm', 'cntrc_sts'] },
+            { id: 'base_tier_ms', label: 'int_cntrct_tier_ms', group: 'base', title: 'Market Share Tiers', columns: ['cntrc_id', 'prc_prg_id', 'cmpnt_id', 'tier_num', 'rebate_pct'] },
+            { id: 'base_compli_toc', label: 'int_cntrct_compli_period_toc', group: 'base', title: 'Compliance Period (TOC)', columns: ['cntrc_id', 'per_strt_dt', 'per_end_dt'] },
+            
+            // INPUT/ELIGIBILITY
+            { id: 'input_elgbl_cust', label: 'int_cntrct_elgbl_cust_ms', group: 'input', title: 'Eligible Customers', columns: ['cntrc_id', 'cmt_cust_id', 'elig_st_dt', 'elig_end_dt'] },
+            { id: 'input_qual_prod', label: 'int_cntrct_qual_prod_ms', group: 'input', title: 'Qualified Products', columns: ['cntrc_id', 'prod_id', 'qual_st_dt', 'qual_end_dt'] },
+            { id: 'input_sls_filtered', label: 'int_cntrct_sls_ms_toc', group: 'input', title: 'Filtered Sales', columns: ['sls_trn_id', 'cmt_cust_id', 'prod_id', 'sls_amt', 'idn_id', 'fclty_id'] },
+            
+            // FACT TABLES
+            { id: 'fact_idn', label: 'int_cntrct_fct_tr_idn_ms', group: 'fact', title: 'Fact - IDN Level', columns: ['cntrc_id', 'idn_id', 'idn_nm', 'qual_sls_amt', 'tot_sls_amt'] },
+            { id: 'fact_fclty', label: 'int_cntrct_fct_tr_fclty_ms', group: 'fact', title: 'Fact - Facility Level', columns: ['cntrc_id', 'fclty_id', 'fclty_nm', 'qual_sls_amt', 'tot_sls_amt'] },
+            
+            // VALIDATION
+            { id: 'vldn_idn', label: 'int_cntrct_cmplnc_vldtn_idn', group: 'validation', title: 'Validation - IDN', columns: ['cntrc_id', 'idn_id', 'ms_pct', 'qual_sls_amt'] },
+            { id: 'vldn_idn_rnkd', label: 'int_cntrct_cmplnc_vldtn_idn_rnkd', group: 'validation', title: 'Validation - IDN Ranked', columns: ['cntrc_id', 'idn_id', 'ms_pct', 'tier_num', 'rebate_amt'] },
+            
+            // COMPREHENSIVE
+            { id: 'cmprh', label: 'int_cntrct_cmprhnsv_fct', group: 'comprehensive', title: 'Comprehensive Fact', columns: ['cntrc_id', 'idn_id', 'fclty_id', 'qual_sls_amt', 'overall_ms_pct', 'tot_rebate'] },
+            
+            // MART
+            { id: 'mart_ms', label: 'mart_cntrct_ms_toc', group: 'mart', title: 'Mart - Contract Compliance', columns: ['cntrc_id', 'idn_id', 'fclty_id', 'qual_sls_amt', 'overall_ms_pct', 'rebate_amt'] }
+        ];
+
+        // Define edges (parent relationships)
+        const edges = [
+            // Base models from sources
+            { from: 'src_dim_cntrc', to: 'base_rcnt_period' },
+            { from: 'src_dim_prc_prg_cmpnt', to: 'base_tier_ms' },
+            { from: 'src_dim_prc_prg_cmpli', to: 'base_compli_toc' },
+            
+            // Input models
+            { from: 'base_tier_ms', to: 'input_elgbl_cust' },
+            { from: 'src_dim_prc_cmpnt_cust_elig', to: 'input_elgbl_cust' },
+            { from: 'base_tier_ms', to: 'input_qual_prod' },
+            { from: 'src_dim_prc_cmpnt_qual_prod', to: 'input_qual_prod' },
+            { from: 'src_fct_sls_trn', to: 'input_sls_filtered' },
+            { from: 'input_elgbl_cust', to: 'input_sls_filtered' },
+            { from: 'input_qual_prod', to: 'input_sls_filtered' },
+            { from: 'src_dim_cmt_cust', to: 'input_sls_filtered' },
+            
+            // Fact tables
+            { from: 'input_sls_filtered', to: 'fact_idn' },
+            { from: 'base_compli_toc', to: 'fact_idn' },
+            { from: 'input_sls_filtered', to: 'fact_fclty' },
+            { from: 'base_compli_toc', to: 'fact_fclty' },
+            
+            // Validation
+            { from: 'fact_idn', to: 'vldn_idn' },
+            { from: 'vldn_idn', to: 'vldn_idn_rnkd' },
+            { from: 'base_tier_ms', to: 'vldn_idn_rnkd' },
+            
+            // Comprehensive
+            { from: 'vldn_idn_rnkd', to: 'cmprh' },
+            
+            // Mart
+            { from: 'cmprh', to: 'mart_ms' }
+        ];
+
+        // Setup vis data
+        const nodes = new vis.DataSet(models.map(m => ({
+            id: m.id,
+            label: m.label.replace(/^int_|^src_|^mart_/g, '').substring(0, 20),
+            title: m.title + '\n' + m.columns.join(', '),
+            group: m.group,
+            color: {
+                background: getColor(m.group),
+                border: '#333',
+                highlight: { background: '#fff700' }
+            },
+            font: { size: 12, color: '#fff' },
+            shape: 'box',
+            margin: 10,
+            physics: true
+        })));
+
+        const edgesVis = new vis.DataSet(edges.map((e, i) => ({
+            id: i,
+            from: e.from,
+            to: e.to,
+            arrows: 'to',
+            smooth: { type: 'cubicBezier' }
+        })));
+
+        const container = document.getElementById('network');
+        const data = { nodes, edges: edgesVis };
+        const options = {
+            physics: {
+                enabled: true,
+                barnesHut: { gravitationalConstant: -20000, centralGravity: 0.3 },
+                maxVelocity: 50,
+                stabilization: { iterations: 200 }
+            },
+            layout: {
+                hierarchical: {
+                    enabled: true,
+                    direction: 'LR',
+                    sortMethod: 'directed'
+                }
+            },
+            interaction: { navigationButtons: true, keyboard: true }
+        };
+
+        const network = new vis.Network(container, data, options);
+
+        // Event handlers
+        network.on('click', (params) => {
+            if (params.nodes.length > 0) {
+                const nodeId = params.nodes[0];
+                const model = models.find(m => m.id === nodeId);
+                if (model) showInfo(model);
+            }
+        });
+
+        function getColor(group) {
+            const colors = {
+                source: '#28a745',
+                base: '#17a2b8',
+                input: '#6610f2',
+                fact: '#fd7e14',
+                validation: '#e83e8c',
+                comprehensive: '#dc3545',
+                mart: '#ffc107'
+            };
+            return colors[group] || '#6c757d';
+        }
+
+        function showInfo(model) {
+            const info = document.getElementById('info');
+            info.innerHTML = `<h3>${model.label}</h3>
+                <p><strong>Layer:</strong> ${model.group.toUpperCase()}</p>
+                <p><strong>Title:</strong> ${model.title}</p>
+                <div class="columns">
+                    <strong>Columns (${model.columns.length}):</strong><br>
+                    ${model.columns.map(c => `<span class="col-badge">${c}</span>`).join('')}
+                </div>`;
+            info.classList.add('active');
+            setTimeout(() => info.classList.remove('active'), 5000);
+        }
+
+        function selectModel(value) {
+            if (!value) {
+                network.unselectAll();
+                return;
+            }
+            network.selectNodes([value]);
+            const model = models.find(m => m.id === value);
+            if (model) showInfo(model);
+        }
+
+        function searchColumn(term) {
+            if (!term) return;
+            term = term.toLowerCase();
+            const matchingModels = models.filter(m => 
+                m.columns.some(c => c.toLowerCase().includes(term))
+            );
+            if (matchingModels.length > 0) {
+                network.selectNodes(matchingModels.map(m => m.id));
+                showInfo(matchingModels[0]);
+            }
+        }
+
+        function resetView() {
+            network.unselectAll();
+            document.getElementById('info').classList.remove('active');
+            network.fit();
+        }
+
+        function downloadGraph() {
+            const svgData = network.getSVG();
+            const blob = new Blob([svgData.outerHTML], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'column-lineage.svg';
+            link.click();
+        }
+
+        // Populate model selector
+        document.getElementById('modelSelect').innerHTML += models
+            .map(m => `<option value="${m.id}">[${m.group.toUpperCase()}] ${m.label}</option>`)
+            .join('');
+
+        // Initial layout
+        network.fit();
+    </script>
+</body>
+</html>

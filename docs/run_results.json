@@ -1,1 +1,0 @@
-{"metadata":{"dbt_schema_version":"https://schemas.getdbt.com/dbt/run-results/v6.json","dbt_version":"2.0.0-preview.92","generated_at":"2026-01-14T08:36:30.268326Z","invocation_id":"019bbba6-32ae-7a51-adbf-03a49efecd08","env":{}},"results":[],"elapsed_time":-0.0,"args":{"command":"run","which":"run","__other__":{"command":"run","which":"run"}}}

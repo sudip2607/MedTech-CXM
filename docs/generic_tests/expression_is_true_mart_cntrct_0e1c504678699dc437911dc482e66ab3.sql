@@ -1,1 +1,0 @@
-{{ dbt_utils.test_expression_is_true(column_name="overall_ms_pct", expression=">= 0 AND <= 100", model=get_where_subquery(ref('mart_cntrct_ms_toc'))) }}

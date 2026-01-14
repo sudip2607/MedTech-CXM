@@ -1,0 +1,193 @@
+version: 2
+
+models:
+  - name: int_cntrct_rcnt_period
+    description: |
+      **Base Model - Level 1.1**
+      
+      Filters contracts within 24-month rolling window. Foundation for ALL workflows.
+      
+      **Business Logic:**
+      - Identifies contracts with active status
+      - Applies 24-month lookback window
+      - Removes expired contracts
+      
+      **Column Lineage:**
+      - cntrc_id ← source(md_dwh.dim_cntrc.cntrc_id)
+      - cntrc_nm ← source(md_dwh.dim_cntrc.cntrc_nm)
+      - cntrc_sts ← source(md_dwh.dim_cntrc.cntrc_sts)
+      - prc_prg_id ← source(md_dwh.dim_cntrc.prc_prg_id)
+      - cntrc_strt_dt ← source(md_dwh.dim_cntrc.cntrc_strt_dt)
+      - cntrc_end_dt ← source(md_dwh.dim_cntrc.cntrc_end_dt)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID - Primary Key from dim_cntrc'
+      - name: cntrc_nm
+        description: 'Contract Name - Descriptive contract name'
+      - name: cntrc_sts
+        description: 'Contract Status - Current status (Active/Inactive/Expired)'
+      - name: prc_prg_id
+        description: 'Pricing Program ID - Links contract to pricing program'
+      - name: cntrc_strt_dt
+        description: 'Contract Start Date - When contract becomes effective'
+      - name: cntrc_end_dt
+        description: 'Contract End Date - When contract expires'
+
+  - name: int_cntrct_compli_period_toc
+    description: |
+      **Base Model - Level 1.1**
+      
+      Latest compliance period (rank=1) per contract/program/component. Time-of-Compliance (TOC) snapshot.
+      Includes both contract-level and customer-level scopes.
+      
+      **Business Logic:**
+      - Ranks compliance periods by recency (latest first)
+      - Filters to rank=1 only (most recent period)
+      - Maintains two scopes: 'no_cust' (contract-level), 'with_cust' (customer-level)
+      - Depends on recent contracts to avoid stale periods
+      
+      **Column Lineage:**
+      - cntrc_id ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.cntrc_id)
+      - prc_prg_id ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.prc_prg_id)
+      - cmt_cust_id ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.cmt_cust_id) [nullable for contract-level]
+      - cmpnt_id ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.cmpnt_id)
+      - per_strt_dt ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.per_strt_dt)
+      - per_end_dt ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.per_end_dt)
+      - rank_scope ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.rank_scope)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID - Links to contract'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmt_cust_id
+        description: 'Customer ID - Null for contract-level, populated for customer-level'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: per_strt_dt
+        description: 'Period Start Date - Latest period start'
+      - name: per_end_dt
+        description: 'Period End Date - Latest period end'
+      - name: rank_scope
+        description: 'Ranking Scope - no_cust (contract-level) or with_cust (customer-level)'
+
+  - name: int_cntrct_compli_period_anltcs
+    description: |
+      **Base Model - Level 1.1**
+      
+      All historical compliance periods (no rank filtering). Analytics (ANLTCS) - time series dimension.
+      
+      **Business Logic:**
+      - Includes all compliance periods (not just most recent)
+      - Enables historical trend analysis
+      - Used by ANLTCS workflows for time-series compliance metrics
+      
+      **Column Lineage:**
+      - cntrc_id ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.cntrc_id)
+      - prc_prg_id ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.prc_prg_id)
+      - cmt_cust_id ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.cmt_cust_id)
+      - cmpnt_id ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.cmpnt_id)
+      - per_strt_dt ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.per_strt_dt)
+      - per_end_dt ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.per_end_dt)
+      - per_num ← source(md_dwh.dim_prc_prg_cmpli_per_rslts.per_num)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmt_cust_id
+        description: 'Customer ID'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: per_strt_dt
+        description: 'Period Start Date'
+      - name: per_end_dt
+        description: 'Period End Date'
+      - name: per_num
+        description: 'Period Number - Sequential period identifier'
+
+  - name: int_cntrct_tier_components_ms
+    description: |
+      **Base Model - Level 1.1**
+      
+      Market Share tier definitions (tier_basis_type = 'MARKET SHARE').
+      Defines tier boundaries and rebate rates for MS workflows.
+      
+      **Business Logic:**
+      - Filters to Market Share basis only (MARKET SHARE)
+      - Groups by tier number with percentage ranges
+      - Applies contract recency filter
+      
+      **Column Lineage:**
+      - prc_prg_id ← source(md_dwh.dim_prc_prg_cmpnt.prc_prg_id)
+      - cmpnt_id ← source(md_dwh.dim_prc_prg_cmpnt.cmpnt_id)
+      - cmpnt_nm ← source(md_dwh.dim_prc_prg_cmpnt.cmpnt_nm)
+      - tier_basis_type ← source(md_dwh.dim_prc_prg_cmpnt.tier_basis_type) [filtered = 'MARKET SHARE']
+      - tier_num ← source(md_dwh.dim_prc_prg_cmpnt.tier_num)
+      - tier_min_pct ← source(md_dwh.dim_prc_prg_cmpnt.tier_min_pct)
+      - tier_max_pct ← source(md_dwh.dim_prc_prg_cmpnt.tier_max_pct)
+      - rebate_pct ← source(md_dwh.dim_prc_prg_cmpnt.rebate_pct)
+      - cntrc_id ← ref(int_cntrct_rcnt_period.cntrc_id) [via join]
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID - From recent contracts base model'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: cmpnt_nm
+        description: 'Component Name - Descriptive name of pricing component'
+      - name: tier_num
+        description: 'Tier Number - Tier sequence (1, 2, 3, etc.)'
+      - name: tier_min_pct
+        description: 'Tier Minimum Market Share % - Lower boundary for tier'
+      - name: tier_max_pct
+        description: 'Tier Maximum Market Share % - Upper boundary for tier'
+      - name: rebate_pct
+        description: 'Rebate Percentage - Rebate rate for this tier'
+
+  - name: int_cntrct_tier_components_nms
+    description: |
+      **Base Model - Level 1.1**
+      
+      Non-Market Share tier definitions (volume/value basis).
+      Defines tier boundaries for SALES VOLUME, VALUE, and other basis types.
+      
+      **Business Logic:**
+      - Filters to non-Market Share basis (SALES VOLUME, VALUE, etc.)
+      - Groups by tier number with value ranges
+      - Applies contract recency filter
+      
+      **Column Lineage:**
+      - prc_prg_id ← source(md_dwh.dim_prc_prg_cmpnt.prc_prg_id)
+      - cmpnt_id ← source(md_dwh.dim_prc_prg_cmpnt.cmpnt_id)
+      - cmpnt_nm ← source(md_dwh.dim_prc_prg_cmpnt.cmpnt_nm)
+      - tier_basis_type ← source(md_dwh.dim_prc_prg_cmpnt.tier_basis_type) [filtered != 'MARKET SHARE']
+      - tier_num ← source(md_dwh.dim_prc_prg_cmpnt.tier_num)
+      - tier_min_val ← source(md_dwh.dim_prc_prg_cmpnt.tier_min_val)
+      - tier_max_val ← source(md_dwh.dim_prc_prg_cmpnt.tier_max_val)
+      - rebate_pct ← source(md_dwh.dim_prc_prg_cmpnt.rebate_pct)
+      - cntrc_id ← ref(int_cntrct_rcnt_period.cntrc_id) [via join]
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID - From recent contracts base model'
+      - name: prc_prg_id
+        description: 'Pricing Program ID'
+      - name: cmpnt_id
+        description: 'Component ID'
+      - name: cmpnt_nm
+        description: 'Component Name'
+      - name: tier_basis_type
+        description: 'Tier Basis Type - SALES VOLUME, VALUE, or other non-MS basis'
+      - name: tier_num
+        description: 'Tier Number'
+      - name: tier_min_val
+        description: 'Tier Minimum Value - Lower boundary in dollars or units'
+      - name: tier_max_val
+        description: 'Tier Maximum Value - Upper boundary in dollars or units'
+      - name: rebate_pct
+        description: 'Rebate Percentage - Rebate rate for this tier'

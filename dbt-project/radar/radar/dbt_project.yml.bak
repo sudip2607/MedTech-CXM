@@ -1,0 +1,55 @@
+name: 'medtech_cxm'
+version: '1.0.0'
+config-version: 2
+
+profile: 'medtech_redshift'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  medtech_cxm:
+    +materialized: table
+    +on_schema_change: "append_new_columns"
+    
+    staging:
+      +materialized: view
+      +schema: staging
+      
+    intermediate:
+      +schema: wrk
+      +post_hook: "ANALYZE {{ this }}"
+      
+      base:
+        +tags: ['base']
+        
+      ms_toc:
+        +tags: ['ms', 'toc', 'market_share']
+        
+      ms_anltcs:
+        +tags: ['ms', 'anltcs', 'market_share']
+        
+      nms_toc:
+        +tags: ['nms', 'toc', 'non_market_share']
+        
+      nms_anltcs:
+        +tags: ['nms', 'anltcs', 'non_market_share']
+    
+    marts:
+      +schema: ldw
+      +materialized: table
+      +post_hook:
+        - "GRANT SELECT ON {{ this }} TO GROUP bi_users"
+        - "ANALYZE {{ this }}"
+
+vars:
+  recent_contract_months: 24

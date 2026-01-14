@@ -1,1 +1,0 @@
-{{ test_not_null(column_name="cmpnt_id", model=get_where_subquery(ref('mart_cntrct_ms_toc'))) }}

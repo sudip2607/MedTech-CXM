@@ -1,0 +1,114 @@
+version: 2
+
+models:
+  - name: mart_cntrct_ms_toc
+    description: |
+      **Mart Model - Final Reporting Layer**
+      
+      Final reporting table for Market Share Time-of-Compliance contract compliance analytics.
+      Combines comprehensive compliance metrics for BI/Dashboard consumption.
+      
+      **Business Logic:**
+      - Single source of truth for MS TOC reporting
+      - Includes all compliance metrics: contract, IDN, and facility levels
+      - Ready for visualization and analysis
+      
+      **Column Lineage:**
+      All columns originate from int_cntrct_cmprhnsv_fct_tr_ms_toc:
+      - cntrc_id ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.cntrc_id)
+      - prc_prg_id ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.prc_prg_id)
+      - cmpnt_id ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.cmpnt_id)
+      - cmpnt_nm ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.cmpnt_nm)
+      - cmt_cust_id ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.cmt_cust_id)
+      - idn_id ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.idn_id)
+      - idn_nm ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.idn_nm)
+      - fclty_id ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.fclty_id)
+      - fclty_nm ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.fclty_nm)
+      - qual_sls_amt ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.qual_sls_amt)
+      - tot_sls_amt ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.tot_sls_amt)
+      - overall_ms_pct ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.overall_ms_pct)
+      - idn_ms_pct ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.idn_ms_pct)
+      - fclty_ms_pct ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.fclty_ms_pct)
+      - idn_tier ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.idn_tier)
+      - fclty_tier ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.fclty_tier)
+      - idn_rebate ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.idn_rebate)
+      - fclty_rebate ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.fclty_rebate)
+      - tot_rebate ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.tot_rebate)
+      - compli_per_strt_dt ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.compli_per_strt_dt)
+      - compli_per_end_dt ← ref(int_cntrct_cmprhnsv_fct_tr_ms_toc.compli_per_end_dt)
+    
+    columns:
+      - name: cntrc_id
+        description: 'Contract ID - Primary contract identifier'
+              
+      - name: prc_prg_id
+        description: 'Pricing Program ID - Program under which compliance is calculated'
+              
+      - name: cmpnt_id
+        description: 'Component ID - Pricing component for compliance'
+              
+      - name: cmpnt_nm
+        description: 'Component Name - Descriptive name of component'
+        
+      - name: cmt_cust_id
+        description: 'Customer ID - Null in aggregated mart view'
+        
+      - name: idn_id
+        description: 'IDN ID - Integrated Delivery Network identifier'
+        
+      - name: idn_nm
+        description: 'IDN Name - Network name'
+        
+      - name: fclty_id
+        description: 'Facility ID - Individual facility identifier'
+        
+      - name: fclty_nm
+        description: 'Facility Name - Facility name'
+        
+      - name: qual_sls_amt
+        description: 'Qualified Sales Amount - Sales meeting component requirements'
+        
+      - name: tot_sls_amt
+        description: 'Total Sales Amount - All sales in compliance period'
+        
+      - name: overall_ms_pct
+        description: 'Overall Market Share % - Comprehensive market share metric'
+        
+      - name: idn_ms_pct
+        description: 'IDN Market Share % - Market share at IDN level'
+        
+      - name: fclty_ms_pct
+        description: 'Facility Market Share % - Market share at facility level'
+        
+      - name: idn_tier
+        description: 'IDN Tier Number - Achievement tier at IDN level'
+        
+      - name: fclty_tier
+        description: 'Facility Tier Number - Achievement tier at facility level'
+        
+      - name: idn_rebate
+        description: 'IDN Rebate Amount - Dollar rebate earned at IDN level'
+        
+      - name: fclty_rebate
+        description: 'Facility Rebate Amount - Dollar rebate earned at facility level'
+        
+      - name: tot_rebate
+        description: 'Total Rebate Amount - Combined IDN + facility rebates'
+        
+      - name: compli_per_strt_dt
+        description: 'Compliance Period Start Date - Period being evaluated'
+        
+      - name: compli_per_end_dt
+        description: 'Compliance Period End Date - Period being evaluated'
+        
+      - name: total_sales
+        description: 'Total sales amount for the compliance period'
+        
+      - name: qualified_sales
+        description: 'Sales amount for qualified products only'
+        
+      - name: avg_idn_ms_pct
+        description: 'Average market share % across all IDNs'
+        
+      - name: avg_fclty_ms_pct
+        description: 'Average market share % across all facilities'

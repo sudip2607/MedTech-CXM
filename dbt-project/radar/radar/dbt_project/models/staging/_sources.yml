@@ -1,0 +1,53 @@
+version: 2
+
+sources:
+  - name: md_dwh
+    description: 'MedTech data warehouse source schema'
+    database: medtech_db
+    schema: md_dwh
+    
+    tables:
+      - name: dim_cntrc
+        description: 'Contract dimension table'
+        columns:
+          - name: cntrc_id
+            description: 'Contract ID (Primary Key)'
+            tests:
+              - not_null
+              - unique
+              
+      - name: dim_prc_prg
+        description: 'Pricing program dimension'
+        
+      - name: dim_prc_prg_cmpnt
+        description: 'Pricing program component dimension'
+        
+      - name: dim_prc_cmpnt_qual_prod
+        description: 'Qualified products for pricing components'
+        
+      - name: dim_prc_cmpnt_cust_elig
+        description: 'Customer eligibility for pricing components'
+        
+      - name: dim_cntrc_prod_line_item
+        description: 'Contract product line items with pricing'
+        
+      - name: dim_prc_prg_cmpli_per_rslts
+        description: 'Compliance period results'
+        
+      - name: dim_acct
+        description: 'Account/facility dimension'
+        
+      - name: dim_prod_resl_prc
+        description: 'Product resale pricing'
+        
+      - name: sv_fact_transaction
+        description: 'Sales transaction fact table'
+        
+      - name: hier_cust
+        description: 'Customer hierarchy (IDN, GPO, Health System, Facility)'
+        
+      - name: sv_product_master_dwh
+        description: 'Product master data'
+        
+      - name: sv_company_master_dwh
+        description: 'Company master data'

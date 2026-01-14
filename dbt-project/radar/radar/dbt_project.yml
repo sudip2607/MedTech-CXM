@@ -1,0 +1,48 @@
+config-version: 2
+name: 'medtech_cxm'
+version: '1.0.0'
+macro-paths: ["macros"]
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+snapshot-paths: ["snapshots"]
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+profile: 'medtech_redshift'
+on-run-start: []
+on-run-end: []
+
+models:
+  medtech_cxm:
+    staging:
+      +materialized: view
+      +schema: staging
+
+    intermediate:
+      +schema: wrk
+      +materialized: view
+
+      base:
+        +tags: ['base']
+
+      ms_toc:
+        +tags: ['ms', 'toc', 'market_share']
+
+      ms_anltcs:
+        +tags: ['ms', 'anltcs', 'market_share']
+
+      nms_toc:
+        +tags: ['nms', 'toc', 'non_market_share']
+
+      nms_anltcs:
+        +tags: ['nms', 'anltcs', 'non_market_share']
+
+    marts:
+      +schema: ldw
+      +materialized: view
+
+vars:
+  recent_contract_months: 24
