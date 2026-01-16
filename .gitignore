@@ -48,6 +48,15 @@ credentials
 
 # Data files (optional - uncomment if you don't want to track data)
 # data/
+
+# dbt artifacts
+**/target/
+**/dbt_packages/
+**/dbt_internal_packages/
+**/logs/
+**/*.log
+**/partial_parse.msgpack
+**/dbt-lsp.log
 # *.csv
 
 # dbt
