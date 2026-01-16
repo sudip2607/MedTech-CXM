@@ -14,6 +14,7 @@
     - Combines all contract, customer, product, and compliance data
     - Aggregates sales at contract component level
     - Includes both IDN and facility level compliance metrics
+    - Includes contracted pricing information
     - Serves as base for final reporting/mart table
     
     Key Calculations:
@@ -46,4 +47,8 @@ SELECT CAST(NULL AS VARCHAR) AS cntrc_id,
        CAST(NULL AS DATE) AS compli_per_end_dt
 FROM {{ ref('int_cntrct_cmplnc_vldtn_idn_rnkd_ms_toc') }} idn_rnkd
 INNER JOIN {{ ref('int_cntrct_cmplnc_vldtn_fclty_rnkd_ms_toc') }} fclty_rnkd
+INNER JOIN {{ ref('int_cntrct_prod_cntrctd_prc_ms_toc') }} prc
+    ON idn_rnkd.cntrc_id = prc.cntrc_id
+    AND idn_rnkd.prc_prg_id = prc.prc_prg_id
+    AND idn_rnkd.cmpnt_id = prc.cmpnt_id
 WHERE FALSE
